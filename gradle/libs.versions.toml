@@ -1,0 +1,29 @@
+[versions]
+spring-boot = "4.1.1"
+spring-modulith = "2.1.1"
+errorprone-plugin = "5.1.1"
+errorprone = "2.50.0"
+nullaway = "0.14.2"
+jspecify = "1.0.1"
+spotless = "8.10.4"
+palantir-java-format = "2.102.0"
+pitest-plugin = "1.19.0"
+pitest = "1.30.1"
+pitest-junit5 = "1.2.3"
+archunit = "1.5.1"
+jqwik = "1.10.2"
+
+[libraries]
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
+jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
+nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+jqwik = { module = "net.jqwik:jqwik", version.ref = "jqwik" }
+
+# Gradle plugins, used as dependencies of build-logic
+gradle-spring-boot = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "spring-boot" }
+gradle-errorprone = { module = "net.ltgt.gradle:gradle-errorprone-plugin", version.ref = "errorprone-plugin" }
+gradle-spotless = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }
+gradle-pitest = { module = "info.solidsoft.gradle.pitest:gradle-pitest-plugin", version.ref = "pitest-plugin" }

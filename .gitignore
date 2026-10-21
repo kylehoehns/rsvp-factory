@@ -35,3 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Factory ###
+node_modules/
+.factory/runs/
+.sandcastle/
