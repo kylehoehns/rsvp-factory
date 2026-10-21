@@ -26,6 +26,10 @@ dependencies {
     errorprone(lib("errorprone-core"))
     errorprone(lib("nullaway"))
     testImplementation(platform(lib("spring-boot-bom")))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.assertj:assertj-core")
+    testImplementation(lib("archunit-junit5"))
+    testImplementation(lib("jqwik"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -42,7 +46,9 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        includeEngines("junit-jupiter", "jqwik", "archunit")
+    }
 }
 
 spotless {

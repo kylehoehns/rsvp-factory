@@ -1,5 +1,6 @@
 plugins {
     id("rsvp.spring-app-conventions")
+    id("rsvp.mutation-conventions")
 }
 
 dependencies {

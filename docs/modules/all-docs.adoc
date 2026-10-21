@@ -1,0 +1,3 @@
+== RsvpFactoryApplication
+plantuml::components.puml[,,format=svg]
+

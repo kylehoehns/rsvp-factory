@@ -40,3 +40,4 @@ out/
 node_modules/
 .factory/runs/
 .sandcastle/
+.jqwik-database
