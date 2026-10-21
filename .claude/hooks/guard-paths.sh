@@ -30,7 +30,7 @@ case "$rel" in
     else
       exit 0
     fi ;;
-  .github/* | .factory/* | .agents/* | .claude/* | gradle/* | build-logic/* | *.gradle.kts | gradlew*)
+  .github/* | .factory/* | .agents/* | .claude/* | .githooks/* | scripts/* | gradle/* | build-logic/* | *.gradle.kts | gradlew*)
     reason="$rel is part of the factory's own controls (high risk tier). Changes here go through the maintainer." ;;
   *) exit 0 ;;
 esac

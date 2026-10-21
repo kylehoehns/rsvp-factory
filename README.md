@@ -12,9 +12,10 @@ Build the brakes before the accelerators. Checks, review and codebase design com
 
 ## Running it
 
-Needs JDK 25 and Docker.
+Needs JDK 25, Docker and Python 3.
 
 ```sh
+git config core.hooksPath .githooks   # once per clone: blocks commits of files over 5,000 tokens
 ./gradlew check          # everything: format, compile, null-safety, tests, architecture
 ./gradlew :app:bootRun   # starts Postgres and Grafana LGTM via compose.yaml
 ```

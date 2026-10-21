@@ -6,6 +6,8 @@
 /.factory/                                   @kylehoehns
 /.agents/                                    @kylehoehns
 /.claude/                                    @kylehoehns
+/.githooks/                                  @kylehoehns
+/scripts/                                    @kylehoehns
 /build-logic/                                @kylehoehns
 /gradle/                                     @kylehoehns
 *.gradle.kts                                 @kylehoehns

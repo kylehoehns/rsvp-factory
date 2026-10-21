@@ -43,6 +43,8 @@ class RiskTierTests(unittest.TestCase):
             ".github/workflows/ci.yml",
             ".github/risk-policy.toml",
             ".claude/hooks/guard-paths.sh",
+            ".githooks/pre-commit",
+            "scripts/check_file_tokens.py",
             ".agents/skills/tdd/SKILL.md",
             "app/build.gradle.kts",
             "gradle/libs.versions.toml",

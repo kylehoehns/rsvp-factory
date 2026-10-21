@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Enable once per clone: git config core.hooksPath .githooks
+# Fails the commit if a staged file is over 5,000 tokens (see scripts/check_file_tokens.py).
+set -euo pipefail
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[[ -z "$staged" ]] && exit 0
+# shellcheck disable=SC2086
+python3 "$(git rev-parse --show-toplevel)/scripts/check_file_tokens.py" $staged
