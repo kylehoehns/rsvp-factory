@@ -1,0 +1,14 @@
+# Only the high-risk paths have an owner, so "code owner review" lands exactly where the high tier does.
+# Mirrors [high] in .github/risk-policy.toml; change both together.
+/app/src/main/java/dev/rsvpfactory/identity/ @kylehoehns
+/app/src/main/resources/db/migration/        @kylehoehns
+/.github/                                    @kylehoehns
+/.factory/                                   @kylehoehns
+/.agents/                                    @kylehoehns
+/.claude/                                    @kylehoehns
+/build-logic/                                @kylehoehns
+/gradle/                                     @kylehoehns
+*.gradle.kts                                 @kylehoehns
+/gradle.properties                           @kylehoehns
+/gradlew                                     @kylehoehns
+/gradlew.bat                                 @kylehoehns
