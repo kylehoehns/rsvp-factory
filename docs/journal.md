@@ -1,6 +1,6 @@
 # Build journal
 
-A running record of building this repo, for the talk: what we did, what went well, what we struggled with, and what surprised us. Newest entries at the bottom. Each entry ends with **Slide material** worth lifting.
+A running record of building this repo, for the talk. It is written in neutral terms ("the maintainer", "the research"), with no personal details or quotes from working sessions: what we did, what went well, what we struggled with, and what surprised us. Newest entries at the bottom. Each entry ends with **Slide material** worth lifting.
 
 The research behind the design lives outside this repo (a long report on software factories as of October 2026); this journal is about building the thing.
 
@@ -40,7 +40,7 @@ Updated as entries are added.
 - Spring Initializr gave a correct Boot 4.1.1 / Java 25 / Gradle 9.8.2 baseline in one call; starting the history from it makes every later commit a visible, deliberate change.
 - Every brake was proven by planting a defect: unformatted code and a `return null` in a `@NullMarked` package both failed with a file and line; an `Instant.now()` call failed the Clock rule with the fix in the message.
 - The ArchUnit `because(...)` text doubles as agent instructions: the failure message says what to do instead.
-- The grilling session was fast and pleasant: three rounds of numbered questions with recommended answers, mostly accepted with "yes". The skill caught a real language problem (cancel meant two things) and split it into **withdrawal** and **cancelled event**.
+- The grilling session was fast: three rounds of numbered questions, each with a recommended answer, and most recommendations were accepted as-is. The skill caught a real language problem (cancel meant two things) and split it into **withdrawal** and **cancelled event**.
 - Pocock's setup skill pushed back on the research report: the report proposed a glossary per module, the skill says one glossary fits almost every repo. The skill was right.
 
 **Struggled with**
@@ -56,4 +56,27 @@ Updated as entries are added.
 - Every brake is proven by a planted failure, not assumed.
 - The 30k-a-day correction as a lesson in how fast this field's facts go stale.
 - A failure message is a prompt: write `because(...)` as the fix.
-- Grilling: 22 decisions, about 10 minutes, mostly "yes", and one real ambiguity caught.
+- Grilling: 22 decisions in about 10 minutes, most recommendations accepted, and one real ambiguity caught.
+
+## 2026-10-21: Spec and tickets
+
+**What happened**
+
+- `/to-spec` published the first spec as issue #1: 48 user stories, four modules, an HTTP API contract, and two agreed test seams (the HTTP API, and the seating rules as a pure function).
+- `/to-tickets` broke it into 11 tickets (#2–#12): one `ready-for-human` ticket for the locked acceptance suite, and ten `ready-for-agent` vertical slices, each a GitHub sub-issue of the spec with native blocked-by links. The maintainer asked for the largest ticket (RSVP) to be split in two, separating the basic confirmed/waitlisted flow from the guest-limit and cutoff refusals.
+
+**Went well**
+
+- Writing the spec surfaced a design problem before any code existed: if `events` owned capacity, `events` and `rsvp` would depend on each other, which Spring Modulith rejects. Moving the seating plan into `rsvp` fixed it and made `rsvp` a properly deep module. Cheap to change in a spec, expensive in code.
+- GitHub's native sub-issues and blocked-by links carry the ticket graph, so the dispatcher can read order from the API instead of an agent guessing it from prose.
+
+**Struggled with**
+
+- A locked acceptance suite written up front would fail every PR until every feature exists. Answer: tag each scenario with its ticket; CI runs scenarios for closed tickets plus the PR's own ticket.
+- `/to-spec` labels a spec `ready-for-agent` by default; this repo overrides that to `spec` so the factory never tries to "implement" a whole spec.
+
+**Slide material**
+
+- The spec caught an architecture bug: a dependency cycle found in prose, not in code.
+- The ticket graph lives in the tracker, not in an agent's head.
+- Acceptance scenarios tagged by ticket: a locked suite you can write before the features.
