@@ -18,8 +18,12 @@ decide() { # decision, reason
 }
 
 case "$rel" in
-  acceptance/*)
-    reason="acceptance/ is the locked suite. Make the scenario pass by changing the app, not the scenario." ;;
+  acceptance/*Scenarios.java)
+    if git cat-file -e "HEAD:$rel" 2>/dev/null; then
+      reason="$rel is an existing acceptance scenario, which protects shipped behaviour. Add a new scenario class instead; changing this one needs the maintainer (ADR 0002)."
+    else
+      exit 0
+    fi ;;
   app/src/main/resources/db/migration/*)
     if git cat-file -e "HEAD:$rel" 2>/dev/null; then
       reason="$rel is already committed, and Flyway migrations are append-only. Add a new V<n>__*.sql instead."

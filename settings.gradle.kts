@@ -11,4 +11,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "rsvp-factory"
 
-include("app")
+include("app", "acceptance")

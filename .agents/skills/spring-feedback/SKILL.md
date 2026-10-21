@@ -12,7 +12,7 @@ The repo's feedback loop is a ladder. Climb it in order and stay on the lowest r
 | Typecheck | `./gradlew :app:compileJava` | Compiles with Error Prone and NullAway. This is the "typecheck" other skills mention. |
 | One test class | `./gradlew :app:test --tests 'dev.rsvpfactory.rsvp.WaitlistTests'` | The slice you are working on. |
 | One module | `./gradlew :app:test --tests 'dev.rsvpfactory.rsvp.*'` | Everything a module owns. |
-| Done | `./gradlew check` | Format, compile, every test, ArchUnit, Modulith verify. Green here is the completion criterion. |
+| Done | `./gradlew check` | Format, compile, every test including `acceptance/`, ArchUnit, Modulith verify. Green here is the completion criterion. |
 
 Formatting is applied for you after each edit. If `check` still reports format violations, run `./gradlew spotlessApply`.
 
@@ -23,7 +23,7 @@ A seam (see the `tdd` skill) maps to one of these test types. Pick the lowest on
 - **Rule inside a module, no Spring** (capacity, waitlist order, cutoffs): a plain JUnit test, or a jqwik `@Property` when the rule should hold for every input ("confirmed attendees never exceed capacity"). Milliseconds.
 - **A module's API with persistence or events**: `@ApplicationModuleTest` with the Testcontainers Postgres from `TestcontainersConfiguration`. Assert published events with Modulith's `Scenario`. Seconds.
 - **HTTP contract**: a web slice with `MockMvcTester` or `RestTestClient`. Seconds.
-- **The whole system**: `acceptance/`, which you read but never edit.
+- **The whole system, as a client sees it**: a new scenario class in `acceptance/`, extending `AcceptanceScenario` and using `Api`. Every ticket adds at least one. Move time with the scenario's `clock`, never with sleeps.
 
 Time-dependent rules take a `java.time.Clock`; tests pass `Clock.fixed(...)` and never sleep.
 
