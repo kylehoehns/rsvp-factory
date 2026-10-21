@@ -1,0 +1,41 @@
+# How much review a PR needs. See docs/adr/0003-risk-tiers-for-a-single-maintainer.md.
+#
+# The risk-gate workflow reads this file from the BASE branch, never from the PR, so a PR
+# can't loosen the rules that judge it. Changing this file is itself high risk.
+#
+# Tiers:   low    -> all checks green, then auto-merge
+#          medium -> the maintainer approves the head commit
+#          high   -> the maintainer approves, plus a second independent AI review and the slow suite
+#
+# A PR's tier is the highest floor any rule below puts it at. Anything no rule mentions is medium.
+# Paths are fnmatch globs where "*" also matches "/".
+
+maintainers = ["kylehoehns"]
+
+[low]
+# Every changed file must match one of these, and none of the exclusions, and the PR must be small.
+paths = ["docs/*", "*.md"]
+exclude = ["AGENTS.md", "CLAUDE.md", "GLOSSARY.md", "docs/adr/*", "docs/agents/*", ".agents/*"]
+max_changed_lines = 100
+
+[high]
+# The identity module, schema changes, and the factory's own controls.
+paths = [
+    "app/src/main/java/dev/rsvpfactory/identity/*",
+    "app/src/main/resources/db/migration/*",
+    ".github/*",
+    ".factory/*",
+    ".agents/*",
+    ".claude/*",
+    "build-logic/*",
+    "gradle/*",
+    "*.gradle.kts",
+    "gradle.properties",
+    "gradlew",
+    "gradlew.bat",
+]
+
+[medium]
+# Changing or deleting anything already in the acceptance suite (adding new files is ordinary work).
+# ADR 0002: the slow suite also runs main's scenarios against the PR, and a failure there is high.
+existing_paths = ["acceptance/*"]

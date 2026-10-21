@@ -1,0 +1,43 @@
+# The risk gate: labels each PR risk:low|medium|high and posts the `risk-gate` status.
+# See docs/adr/0003-risk-tiers-for-a-single-maintainer.md.
+#
+# pull_request_target gives this workflow a write token even for fork PRs. That is safe ONLY because
+# it never checks out or runs PR code: the checkout below is the base branch, and the PR is read as
+# data through the API. Keep it that way.
+name: risk-gate
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: risk-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  risk-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the base branch's policy and script (never the PR)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Decide the tier
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RISK_GATE_MODE: ${{ vars.RISK_GATE_MODE || 'shadow' }}
+          FACTORY_BOT: ${{ vars.FACTORY_BOT }}
+        run: python3 .github/scripts/risk_gate.py

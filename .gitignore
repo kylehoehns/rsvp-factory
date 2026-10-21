@@ -41,3 +41,4 @@ node_modules/
 .factory/runs/
 .sandcastle/
 .jqwik-database
+__pycache__/
