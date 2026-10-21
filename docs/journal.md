@@ -23,6 +23,7 @@ Updated as entries are added.
 - How much maintainer time does a merged agent PR actually cost?
 - How often does the risk classifier disagree with the maintainer?
 - Did the brakes catch real agent mistakes, or only planted ones?
+- Feature flags as the release brake: if every agent-built feature ships behind a default-off flag, merging becomes a two-way door and "release" becomes a separate, reversible decision (per-member beta, then a metrics-gated percentage ramp with automatic rollback). Planned as spec #2, with monitoring and alerting.
 
 ---
 
