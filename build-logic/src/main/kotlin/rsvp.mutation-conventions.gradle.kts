@@ -18,6 +18,9 @@ pitest {
             .gradleProperty("pitTargets")
             .map { it.split(",").map(String::trim).toSet() }
             .orElse(setOf("dev.rsvpfactory.*"))
+    // Mutate only the target classes, but always run every test: PIT otherwise limits the tests it runs to
+    // targetClasses too, so with -PpitTargets it ran none of them and every mutant was NO_COVERAGE.
+    targetTests = setOf("dev.rsvpfactory.*")
     excludedTestClasses = setOf("*ModularityTests", "*ArchitectureTests", "*ApplicationTests")
     threads = Runtime.getRuntime().availableProcessors()
     outputFormats = setOf("HTML", "XML")
