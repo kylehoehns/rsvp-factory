@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 
 /**
  * The seating rules as a pure function: no Spring, no database, no clock of its own. Given an event's seating plan, its
@@ -100,7 +101,9 @@ final class Seating {
         }
         if (party.size() - 1 > plan.guestLimit()) {
             throw new SeatingRefusal(
-                    "guest-limit-exceeded", "This event allows at most " + plan.guestLimit() + " guests per RSVP.");
+                    "guest-limit-exceeded",
+                    HttpStatus.UNPROCESSABLE_CONTENT,
+                    "This event allows at most " + plan.guestLimit() + " guests per RSVP.");
         }
         if (existing != null) {
             return changeGuests(plan, state, party, held != null, now);
@@ -126,7 +129,7 @@ final class Seating {
      */
     static Withdrawal withdraw(SeatingPlan plan, State state, long memberId, Instant now) {
         if (state.confirmedParty(memberId) == null && state.waitlistedParty(memberId) == null) {
-            throw new SeatingRefusal("rsvp-not-found", "There is no RSVP to withdraw.");
+            throw new SeatingRefusal("rsvp-not-found", HttpStatus.NOT_FOUND, "There is no RSVP to withdraw.");
         }
         List<Party> confirmed = new ArrayList<>(state.confirmed());
         confirmed.removeIf(party -> party.memberId() == memberId);
@@ -150,6 +153,7 @@ final class Seating {
             if (confirmedNow && added > state.openSeats(plan)) {
                 throw new SeatingRefusal(
                         "not-enough-open-seats",
+                        HttpStatus.CONFLICT,
                         "There are not enough open seats to add guests; the RSVP stays as it is.");
             }
         }
@@ -193,6 +197,7 @@ final class Seating {
     }
 
     private static SeatingRefusal cutoffPassed() {
-        return new SeatingRefusal("rsvp-cutoff-passed", "The RSVP cutoff for this event has passed.");
+        return new SeatingRefusal(
+                "rsvp-cutoff-passed", HttpStatus.CONFLICT, "The RSVP cutoff for this event has passed.");
     }
 }

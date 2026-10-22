@@ -1,6 +1,7 @@
 package dev.rsvpfactory.rsvp;
 
 import dev.rsvpfactory.events.EventDetails;
+import dev.rsvpfactory.events.EventStatus;
 import dev.rsvpfactory.events.Events;
 import dev.rsvpfactory.groups.GroupAccess;
 import dev.rsvpfactory.identity.Member;
@@ -43,19 +44,23 @@ class RsvpService {
      */
     @Transactional
     RsvpView rsvp(Member member, long eventId, int guests) {
+        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        if (event.status() == EventStatus.CANCELLED) {
+            throw new RuleBrokenException(
+                    "event-cancelled", HttpStatus.CONFLICT, "This event has been cancelled and takes no RSVPs.");
+        }
         if (!groups.isMember(event.groupId(), member.id())) {
             throw new RuleBrokenException(
                     "not-a-member", HttpStatus.FORBIDDEN, "Join the group before you RSVP to its events.");
         }
-        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         Seating.State before = rsvps.state(eventId);
         Party party = new Party(member.id(), 1 + guests);
         Seating.Outcome outcome;
         try {
             outcome = Seating.rsvp(plan, before, party, Instant.now(clock));
         } catch (SeatingRefusal refusal) {
-            throw new RuleBrokenException(refusal.rule(), statusOf(refusal), refusal.reason());
+            throw new RuleBrokenException(refusal.rule(), refusal.status(), refusal.reason());
         }
         int position = outcome.state().waitlistPosition(member.id());
         if (!outcome.state().equals(before)) {
@@ -124,12 +129,5 @@ class RsvpService {
             rsvps.confirm(eventId, promoted.memberId());
             publisher.publishEvent(new RsvpPromoted(eventId, promoted.memberId(), promoted.size()));
         }
-    }
-
-    private static HttpStatus statusOf(SeatingRefusal refusal) {
-        return switch (refusal.rule()) {
-            case "guest-limit-exceeded" -> HttpStatus.UNPROCESSABLE_CONTENT;
-            default -> HttpStatus.CONFLICT;
-        };
     }
 }

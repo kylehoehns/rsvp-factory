@@ -27,6 +27,7 @@ class ChangedFile:
     status: str  # added, modified, removed, renamed, copied, changed
     changes: int
     previous_path: str | None = None
+    deletions: int = 0
 
 
 @dataclass
@@ -61,13 +62,18 @@ def floor_tier(
         if f.status != "added" and matches(f.previous_path or f.path, policy["medium"]["existing_paths"]):
             decision.raise_to("medium", f"{f.path} changes something already in the acceptance suite")
 
-    outside_low = [p for p in paths if not matches(p, low["paths"]) or matches(p, low["exclude"])]
-    if outside_low:
-        decision.raise_to("medium", f"{len(outside_low)} file(s) outside the low-risk paths, e.g. {outside_low[0]}")
+    only_adds_tests = all(
+        matches(f.path, low["test_paths"]) and not f.previous_path and f.status != "removed" and f.deletions == 0
+        for f in files
+    )
+    if not only_adds_tests:
+        outside_low = [p for p in paths if not matches(p, low["paths"]) or matches(p, low["exclude"])]
+        if outside_low:
+            decision.raise_to("medium", f"{len(outside_low)} file(s) outside the low-risk paths, e.g. {outside_low[0]}")
 
-    changed_lines = sum(f.changes for f in files)
-    if changed_lines > low["max_changed_lines"]:
-        decision.raise_to("medium", f"{changed_lines} changed lines (low allows {low['max_changed_lines']})")
+        changed_lines = sum(f.changes for f in files)
+        if changed_lines > low["max_changed_lines"]:
+            decision.raise_to("medium", f"{changed_lines} changed lines (low allows {low['max_changed_lines']})")
 
     if not author_is_trusted:
         decision.raise_to("medium", f"author {author} is not a maintainer or the factory")
@@ -76,7 +82,7 @@ def floor_tier(
         decision.raise_to("medium", "the PR's Merge Danger says one-way door")
 
     if not decision.reasons:
-        decision.reasons.append("low: small change to low-risk paths only")
+        decision.reasons.append("low: only adds tests" if only_adds_tests else "low: small change to low-risk paths only")
     return decision
 
 
@@ -104,7 +110,7 @@ def changed_files(pr_number: int) -> list[ChangedFile]:
     while True:
         batch = api("GET", f"/pulls/{pr_number}/files?per_page=100&page={page}")
         files += [
-            ChangedFile(f["filename"], f["status"], f["changes"], f.get("previous_filename"))
+            ChangedFile(f["filename"], f["status"], f["changes"], f.get("previous_filename"), f["deletions"])
             for f in batch  # type: ignore[union-attr]
         ]
         if len(batch) < 100:  # type: ignore[arg-type]
@@ -142,7 +148,7 @@ def local_files(diff_range: str) -> list[ChangedFile]:
     for line in git("--numstat"):
         added, deleted, path = line.split("\t", 2)
         changes = 0 if added == "-" else int(added) + int(deleted)  # "-" means a binary file
-        files.append(ChangedFile(path, statuses.get(path, "modified"), changes))
+        files.append(ChangedFile(path, statuses.get(path, "modified"), changes, deletions=0 if deleted == "-" else int(deleted)))
     return files
 
 

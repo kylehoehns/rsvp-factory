@@ -12,6 +12,7 @@ import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
 import net.jqwik.api.Provide;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 /** Seam B: the seating rules as a pure function, with worked examples and invariants. */
 class SeatingTests {
@@ -190,7 +191,10 @@ class SeatingTests {
     void moreGuestsThanTheGuestLimitIsRefused() {
         assertThatThrownBy(() -> Seating.rsvp(plan(10, 2), Seating.State.EMPTY, new Party(1, 4), NOW))
                 .isInstanceOfSatisfying(
-                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("guest-limit-exceeded"));
+                        SeatingRefusal.class,
+                        e -> assertThat(e)
+                                .returns("guest-limit-exceeded", SeatingRefusal::rule)
+                                .returns(HttpStatus.UNPROCESSABLE_CONTENT, SeatingRefusal::status));
     }
 
     @Test
@@ -207,7 +211,10 @@ class SeatingTests {
                 .isEqualTo(Placement.CONFIRMED);
         assertThatThrownBy(() -> Seating.rsvp(plan(10, 0), Seating.State.EMPTY, new Party(1, 1), CUTOFF))
                 .isInstanceOfSatisfying(
-                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("rsvp-cutoff-passed"));
+                        SeatingRefusal.class,
+                        e -> assertThat(e)
+                                .returns("rsvp-cutoff-passed", SeatingRefusal::rule)
+                                .returns(HttpStatus.CONFLICT, SeatingRefusal::status));
     }
 
     @Test
@@ -334,7 +341,10 @@ class SeatingTests {
     void withdrawingWithoutAnRsvpIsRefused() {
         assertThatThrownBy(() -> Seating.withdraw(plan(2, 1), Seating.State.EMPTY, 1, NOW))
                 .isInstanceOfSatisfying(
-                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("rsvp-not-found"));
+                        SeatingRefusal.class,
+                        e -> assertThat(e)
+                                .returns("rsvp-not-found", SeatingRefusal::rule)
+                                .returns(HttpStatus.NOT_FOUND, SeatingRefusal::status));
     }
 
     @Property

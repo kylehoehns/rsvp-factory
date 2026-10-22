@@ -58,6 +58,13 @@ class RsvpRepository {
                 .update();
     }
 
+    /** Ends every RSVP to the event, confirmed or waitlisted. */
+    void deleteAll(long eventId) {
+        jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId")
+                .param("eventId", eventId)
+                .update();
+    }
+
     void delete(long eventId, long memberId) {
         jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId AND member_id = :memberId")
                 .param("eventId", eventId)
