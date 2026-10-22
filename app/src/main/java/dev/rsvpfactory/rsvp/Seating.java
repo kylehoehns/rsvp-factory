@@ -62,6 +62,14 @@ final class Seating {
     /** The state after a change, and where the changing party ended up. */
     record Outcome(State state, Placement placement) {}
 
+    /** The state after a withdrawal, and the waitlisted parties it promoted, in the order they were promoted. */
+    record Withdrawal(State state, List<Party> promoted) {
+
+        Withdrawal {
+            promoted = List.copyOf(promoted);
+        }
+    }
+
     /**
      * A member's RSVP for their party. Confirmed when the party fits the open seats, otherwise it joins the end of the
      * waitlist. RSVPing again with the same party changes nothing.
@@ -95,5 +103,37 @@ final class Seating {
         List<Party> waitlist = new ArrayList<>(state.waitlist());
         waitlist.add(party);
         return new Outcome(new State(state.confirmed(), waitlist), Placement.WAITLISTED);
+    }
+
+    /**
+     * A member taking back their RSVP, confirmed or waitlisted. Always allowed, even after the cutoff. Freed seats go
+     * to the earliest waitlisted parties that fit, repeatedly, until none fits; before the cutoff only.
+     *
+     * @throws SeatingRefusal when the member has no RSVP
+     */
+    static Withdrawal withdraw(SeatingPlan plan, State state, long memberId, Instant now) {
+        if (state.confirmedParty(memberId) == null && state.waitlistedParty(memberId) == null) {
+            throw new SeatingRefusal("rsvp-not-found", "There is no RSVP to withdraw.");
+        }
+        List<Party> confirmed = new ArrayList<>(state.confirmed());
+        confirmed.removeIf(party -> party.memberId() == memberId);
+        List<Party> waitlist = new ArrayList<>(state.waitlist());
+        waitlist.removeIf(party -> party.memberId() == memberId);
+
+        List<Party> promoted = new ArrayList<>();
+        if (now.isBefore(plan.rsvpCutoff())) {
+            int open =
+                    plan.capacity() - confirmed.stream().mapToInt(Party::size).sum();
+            // Open seats only shrink, so a party that did not fit earlier in line never fits later: one pass suffices.
+            for (Party next : state.waitlist()) {
+                if (next.memberId() != memberId && next.size() <= open) {
+                    open -= next.size();
+                    waitlist.remove(next);
+                    confirmed.add(next);
+                    promoted.add(next);
+                }
+            }
+        }
+        return new Withdrawal(new State(confirmed, waitlist), promoted);
     }
 }
