@@ -1,6 +1,7 @@
 package dev.rsvpfactory.rsvp;
 
 import dev.rsvpfactory.events.EventDetails;
+import dev.rsvpfactory.events.EventStatus;
 import dev.rsvpfactory.events.Events;
 import dev.rsvpfactory.groups.GroupAccess;
 import dev.rsvpfactory.identity.Member;
@@ -40,12 +41,16 @@ class RsvpService {
     /** Creates the member's RSVP for their party, or returns the one they already have for that party. */
     @Transactional
     RsvpView rsvp(Member member, long eventId, int guests) {
+        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        if (event.status() == EventStatus.CANCELLED) {
+            throw new RuleBrokenException(
+                    "event-cancelled", HttpStatus.CONFLICT, "This event has been cancelled and takes no RSVPs.");
+        }
         if (!groups.isMember(event.groupId(), member.id())) {
             throw new RuleBrokenException(
                     "not-a-member", HttpStatus.FORBIDDEN, "Join the group before you RSVP to its events.");
         }
-        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         Seating.State before = rsvps.state(eventId);
         Party party = new Party(member.id(), 1 + guests);
         Seating.Outcome outcome;

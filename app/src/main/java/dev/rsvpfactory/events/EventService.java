@@ -58,6 +58,20 @@ class EventService implements Events {
         return events.find(id).orElseThrow();
     }
 
+    /** Cancels the event and publishes {@link EventCancelled}; cancelling a cancelled event changes nothing. */
+    @Transactional
+    EventDetails cancel(Member member, long eventId) {
+        EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        if (!groups.isOrganizer(event.groupId(), member.id())) {
+            throw new RuleBrokenException(
+                    "not-an-organizer", HttpStatus.FORBIDDEN, "Only an organizer of the group can cancel its events.");
+        }
+        if (events.cancel(eventId)) {
+            publisher.publishEvent(new EventCancelled(eventId, event.groupId()));
+        }
+        return events.find(eventId).orElseThrow();
+    }
+
     @Override
     public Optional<EventDetails> find(long eventId) {
         return events.find(eventId);
