@@ -33,4 +33,15 @@ class EventController {
         EventDetails event = events.schedule(currentMember.get(), id, request);
         return ResponseEntity.created(URI.create("/events/" + event.id())).body(event);
     }
+
+    @PostMapping("/events/{eventId}/cancellation")
+    EventDetails cancel(@PathVariable String eventId) {
+        long id;
+        try {
+            id = Long.parseLong(eventId);
+        } catch (NumberFormatException e) {
+            throw RuleBrokenException.notFound("event", eventId);
+        }
+        return events.cancel(currentMember.get(), id);
+    }
 }

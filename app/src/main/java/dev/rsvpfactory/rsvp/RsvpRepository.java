@@ -50,6 +50,13 @@ class RsvpRepository {
                 .update();
     }
 
+    /** Ends every RSVP to the event, confirmed or waitlisted. */
+    void deleteAll(long eventId) {
+        jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId")
+                .param("eventId", eventId)
+                .update();
+    }
+
     Map<Long, Seats> seats(Collection<Long> eventIds) {
         if (eventIds.isEmpty()) {
             return Map.of();
