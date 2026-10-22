@@ -1,7 +1,8 @@
 """Pick the next ticket for the factory, deterministically. No agent decides what to work on.
 
 A ticket is ready when it is open, labelled ready-for-agent by a maintainer, is a leaf (no
-sub-issues, not a spec), isn't already claimed or blocked, and every issue blocking it is closed.
+sub-issues, not a spec), isn't already claimed or blocked, has no open factory PR, and every issue
+blocking it is closed.
 The work-in-progress limit counts claimed tickets plus open factory PRs (branches agent/issue-N). Lowest number wins, which
 is dependency order because /to-tickets publishes blockers first.
 
@@ -31,6 +32,7 @@ class Ticket:
     open_blockers: int
     sub_issues: int
     labelled_by: str | None
+    has_open_pr: bool = False
 
 
 def pick(tickets: list[Ticket], work_in_progress: int, wip_limit: int, maintainers: set[str]) -> Ticket | None:
@@ -42,6 +44,7 @@ def pick(tickets: list[Ticket], work_in_progress: int, wip_limit: int, maintaine
         if TRIGGER in t.labels
         and not t.labels & {CLAIMED, BLOCKED, "spec"}
         and t.sub_issues == 0
+        and not t.has_open_pr  # its PR is waiting for review; building it again would overwrite it
         and t.open_blockers == 0
         and t.labelled_by in maintainers
     ]
@@ -79,8 +82,14 @@ def labelled_by(number: int) -> str | None:
     return labelled[-1]["actor"]["login"] if labelled else None  # type: ignore[index]
 
 
+def open_factory_pr_tickets() -> set[int]:
+    pulls = api("/pulls?state=open&per_page=100") or []
+    return {int(p["head"]["ref"][len(BRANCH_PREFIX):]) for p in pulls if p["head"]["ref"].startswith(BRANCH_PREFIX)}  # type: ignore[index]
+
+
 def load_tickets() -> list[Ticket]:
     issues = api(f"/issues?state=open&labels={TRIGGER}&per_page=100") or []
+    with_prs = open_factory_pr_tickets()
     return [
         Ticket(
             number=i["number"],
@@ -88,6 +97,7 @@ def load_tickets() -> list[Ticket]:
             open_blockers=(i.get("issue_dependencies_summary") or {}).get("blocked_by", 0),
             sub_issues=(i.get("sub_issues_summary") or {}).get("total", 0),
             labelled_by=labelled_by(i["number"]),
+            has_open_pr=i["number"] in with_prs,
         )
         for i in issues  # type: ignore[union-attr]
         if "pull_request" not in i

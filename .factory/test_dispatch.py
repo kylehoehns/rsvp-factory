@@ -5,8 +5,9 @@ from dispatch import Ticket, pick
 MAINTAINERS = {"kylehoehns"}
 
 
-def ticket(number: int, *labels: str, blockers: int = 0, subs: int = 0, by: str | None = "kylehoehns") -> Ticket:
-    return Ticket(number, frozenset({"ready-for-agent", *labels}), blockers, subs, by)
+def ticket(number: int, *labels: str, blockers: int = 0, subs: int = 0, by: str | None = "kylehoehns",
+           pr: bool = False) -> Ticket:
+    return Ticket(number, frozenset({"ready-for-agent", *labels}), blockers, subs, by, pr)
 
 
 class DispatchTests(unittest.TestCase):
@@ -28,6 +29,10 @@ class DispatchTests(unittest.TestCase):
 
     def test_only_a_maintainers_label_counts(self):
         self.assertIsNone(self.chosen([ticket(3, by="drive-by"), ticket(4, by=None)]))
+
+    def test_a_ticket_whose_pr_is_waiting_for_review_is_not_built_again(self):
+        # Regression: with wipLimit 3, #4 was dispatched again right after its PR (#33) opened.
+        self.assertEqual(5, self.chosen([ticket(4, pr=True), ticket(5)], wip=1, limit=3))
 
     def test_nothing_starts_at_the_work_in_progress_limit(self):
         self.assertIsNone(self.chosen([ticket(3)], wip=1, limit=1))
