@@ -95,26 +95,46 @@ class RsvpService {
         if (events.find(eventId).isEmpty()) {
             throw RuleBrokenException.notFound("event", eventId);
         }
+        if (!withdrawIfPresent(member.id(), eventId)) {
+            throw RuleBrokenException.notFound("rsvp", eventId);
+        }
+    }
+
+    /**
+     * Withdraws the member's RSVPs to the group's events that haven't started, with promotion as for any withdrawal.
+     */
+    @Transactional
+    void withdrawUpcoming(long groupId, long memberId) {
+        Instant now = Instant.now(clock);
+        for (EventDetails event : events.inGroup(groupId)) {
+            if (event.status() == EventStatus.SCHEDULED && event.startsAt().isAfter(now)) {
+                withdrawIfPresent(memberId, event.id());
+            }
+        }
+    }
+
+    private boolean withdrawIfPresent(long memberId, long eventId) {
         SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         Seating.State before = rsvps.state(eventId);
         Seating.Withdrawal withdrawal;
         try {
-            withdrawal = Seating.withdraw(plan, before, member.id(), Instant.now(clock));
+            withdrawal = Seating.withdraw(plan, before, memberId, Instant.now(clock));
         } catch (SeatingRefusal refusal) {
-            throw RuleBrokenException.notFound("rsvp", eventId);
+            return false;
         }
         Party withdrawn = before.confirmed().stream()
-                .filter(party -> party.memberId() == member.id())
+                .filter(party -> party.memberId() == memberId)
                 .findFirst()
                 .orElseGet(() -> before.waitlist().stream()
-                        .filter(party -> party.memberId() == member.id())
+                        .filter(party -> party.memberId() == memberId)
                         .findFirst()
                         .orElseThrow());
-        rsvps.delete(eventId, member.id());
-        publisher.publishEvent(new RsvpWithdrawn(eventId, member.id(), withdrawn.size()));
+        rsvps.delete(eventId, memberId);
+        publisher.publishEvent(new RsvpWithdrawn(eventId, memberId, withdrawn.size()));
         for (Party promoted : withdrawal.promoted()) {
             rsvps.confirm(eventId, promoted.memberId());
             publisher.publishEvent(new RsvpPromoted(eventId, promoted.memberId(), promoted.size()));
         }
+        return true;
     }
 }
