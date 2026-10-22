@@ -1,0 +1,33 @@
+@startuml
+title <size:24>Groups</size>
+
+set separator none
+top to bottom direction
+
+<style>
+  root {
+    BackgroundColor: #ffffff
+    FontColor: #444444
+  }
+</style>
+
+!include <C4/C4>
+!include <C4/C4_Context>
+!include <C4/C4_Component>
+
+System_Boundary("RsvpFactoryApplication_boundary", "RsvpFactoryApplication", $tags="") {
+  Container_Boundary("RsvpFactoryApplication.RsvpFactoryApplication_boundary", "RsvpFactoryApplication", $tags="") {
+    Component(RsvpFactoryApplication.RsvpFactoryApplication.Problems, "Problems", $techn="Module", $descr="", $tags="", $link="")
+    Component(RsvpFactoryApplication.RsvpFactoryApplication.Identity, "Identity", $techn="Module", $descr="", $tags="", $link="")
+    Component(RsvpFactoryApplication.RsvpFactoryApplication.Groups, "Groups", $techn="Module", $descr="", $tags="", $link="")
+  }
+
+}
+
+Rel(RsvpFactoryApplication.RsvpFactoryApplication.Groups, RsvpFactoryApplication.RsvpFactoryApplication.Problems, "depends on", $techn="", $tags="", $link="")
+Rel(RsvpFactoryApplication.RsvpFactoryApplication.Groups, RsvpFactoryApplication.RsvpFactoryApplication.Identity, "uses", $techn="", $tags="", $link="")
+Rel(RsvpFactoryApplication.RsvpFactoryApplication.Identity, RsvpFactoryApplication.RsvpFactoryApplication.Problems, "depends on", $techn="", $tags="", $link="")
+
+SHOW_LEGEND(true)
+hide stereotypes
+@enduml

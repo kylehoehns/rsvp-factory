@@ -1,0 +1,8 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`dev.rsvpfactory.groups`
+|Bean references
+|* `d.r.i.CurrentMember` (in Identity)
+* `d.r.i.Members` (in Identity)
+|===
