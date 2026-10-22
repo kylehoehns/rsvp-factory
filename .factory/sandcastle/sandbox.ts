@@ -4,12 +4,32 @@
 import { claudeCode, createSandbox } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { config, type Outcome, repoRoot, run, RUNS } from "./shared.ts";
 
 const IMAGE = "rsvp-factory-sandbox:25";
+const BOT_EMAIL = "346099977+rsvp-factory-bot[bot]@users.noreply.github.com"; // GitHub links this to the app's bot user
+const METRICS = join(repoRoot, RUNS, "metrics.jsonl"); // local only; scripts/factory_metrics.py reads it
+
+/** Total tokens across every assistant message in the captured session transcripts. */
+function sessionTokens(files: (string | undefined)[]) {
+  const total = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, turns: 0 };
+  for (const file of files) {
+    if (!file || !existsSync(file)) continue;
+    for (const line of readFileSync(file, "utf8").split("\n")) {
+      const usage = line ? JSON.parse(line)?.message?.usage : undefined;
+      if (!usage) continue;
+      total.turns++;
+      total.input += usage.input_tokens ?? 0;
+      total.cacheWrite += usage.cache_creation_input_tokens ?? 0;
+      total.cacheRead += usage.cache_read_input_tokens ?? 0;
+      total.output += usage.output_tokens ?? 0;
+    }
+  }
+  return total;
+}
 const DIND_IMAGE = "docker:29.9.2-dind";
 
 function startPrivateDocker(issue: number): { network: string; host: string; stop: () => void } {
@@ -74,6 +94,11 @@ export async function runSessions(issue: number, branch: string, sessions: Sessi
           // an empty agent env and sandbox.run() never adds it), so the token goes in the sandbox env.
           CLAUDE_CODE_OAUTH_TOKEN: claudeToken,
           RSVP_FACTORY: "1",
+          // Agents commit as the factory app, not as whoever's git identity the host repo has.
+          GIT_AUTHOR_NAME: "rsvp-factory-bot[bot]",
+          GIT_AUTHOR_EMAIL: BOT_EMAIL,
+          GIT_COMMITTER_NAME: "rsvp-factory-bot[bot]",
+          GIT_COMMITTER_EMAIL: BOT_EMAIL,
           DOCKER_HOST: `tcp://${privateDocker.host}:2375`,
           TESTCONTAINERS_HOST_OVERRIDE: privateDocker.host,
         },
@@ -102,7 +127,8 @@ export async function runSessions(issue: number, branch: string, sessions: Sessi
     };
     for (const session of sessions) {
       console.log(`#${issue}: ${session.role}…`);
-      await sandbox.run({
+      const started = Date.now();
+      const result = await sandbox.run({
         agent: claudeCode(config[`${session.role}Model`]),
         promptFile: join(repoRoot, ".factory/prompts", session.prompt),
         promptArgs,
@@ -115,6 +141,10 @@ export async function runSessions(issue: number, branch: string, sessions: Sessi
       const outcome: Outcome = outcomeText
         ? JSON.parse(outcomeText)
         : { outcome: "blocked", summary: `The ${session.role} session ended without writing an outcome.` };
+      appendFileSync(METRICS, JSON.stringify({
+        at: new Date().toISOString(), issue, role: session.role, outcome: outcome.outcome, minutes: (Date.now() - started) / 60_000,
+        commits: result.commits.length, tokens: sessionTokens(result.iterations.map((i) => i.sessionFilePath)),
+      }) + "\n");
       if (outcome.outcome !== "success") return { outcome, read };
     }
     // Read the results before the sandbox (and its worktree) is disposed.
