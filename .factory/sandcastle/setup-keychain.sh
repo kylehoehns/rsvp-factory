@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup for the local factory: store its two credentials in the macOS keychain, never in files.
 #   1. a Claude subscription token, from `claude setup-token` (the sandbox can't use your Mac's login)
-#   2. the factory GitHub App's private key (.pem), so night-shift.ts can open PRs as the app
+#   2. the factory GitHub App's private key (.pem), so factory.ts can open PRs as the app
 set -euo pipefail
 
 echo "1/2  Claude token: run 'claude setup-token' in another terminal, then paste the token when asked (twice)."

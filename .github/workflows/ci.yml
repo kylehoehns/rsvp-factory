@@ -36,7 +36,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_*.py'
           python3 -m unittest discover -s .factory -p 'test_*.py'
 
-      - name: Type-check the night-shift orchestrator
+      - name: Type-check the factory orchestrator
         working-directory: .factory/sandcastle
         run: npm ci --silent && npm run typecheck
 

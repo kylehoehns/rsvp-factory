@@ -1,4 +1,4 @@
-// The factory's night shift, run on the maintainer's machine: `npm run night-shift` in this folder.
+// The factory, run on the maintainer's machine: `npm run factory` in this folder.
 //
 // For each ready ticket (up to the work-in-progress limit):
 //   dispatch  .factory/dispatch.py picks the ticket and writes the task file (factory app token)

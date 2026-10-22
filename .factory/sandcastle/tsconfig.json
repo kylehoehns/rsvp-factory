@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "files": ["night-shift.ts"]
+  "files": ["factory.ts"]
 }

@@ -1,9 +1,9 @@
 # How the factory works
 
-The factory turns GitHub issues labelled `ready-for-agent` into reviewed pull requests. It runs on the maintainer's machine, started by hand: one shift processes ready tickets until none is left or the work-in-progress limit is reached.
+The factory turns GitHub issues labelled `ready-for-agent` into reviewed pull requests. It runs on the maintainer's machine, started by hand, and works through ready tickets until none is left or the work-in-progress limit is reached. In Matt Pocock's terms it is the "night shift": the unattended half, between the human "day shift" that shapes tickets and the one that reviews and merges PRs.
 
 ```text
-cd .factory/sandcastle && npm run night-shift
+cd .factory/sandcastle && npm run factory
   │
   for each ready ticket (lowest number first, all blockers closed, under wipLimit)
   │
@@ -13,7 +13,7 @@ cd .factory/sandcastle && npm run night-shift
   implement  Claude, in the container: tdd at the spec's seams, an acceptance scenario,
              ./gradlew check green, commits, PR body (pr skill), outcome
   review     a fresh Claude session in the same container: code-review skill, fixes, PR body
-  publish    night-shift.ts refuses changes to the factory's own controls, pushes the branch and
+  publish    factory.ts refuses changes to the factory's own controls, pushes the branch and
              opens the PR as the factory app
   │
   ci + risk-gate on the PR; the maintainer approves; merging closes the ticket
@@ -38,7 +38,7 @@ Anything that goes wrong ends in `agent:blocked` on the ticket with a comment sa
 | Start containers in its private Docker-in-Docker | Reach your Docker daemon or its other containers |
 | Call the Anthropic API and download dependencies | Use GitHub: no `gh`, no token, no push |
 
-The repo's hooks run inside the container with `RSVP_FACTORY=1`, so the factory's own controls, committed migrations and shipped acceptance scenarios can't be edited in-session; `night-shift.ts` re-checks the branch before pushing.
+The repo's hooks run inside the container with `RSVP_FACTORY=1`, so the factory's own controls, committed migrations and shipped acceptance scenarios can't be edited in-session; `factory.ts` re-checks the branch before pushing.
 
 ## Knobs (`.factory/config.json`)
 
