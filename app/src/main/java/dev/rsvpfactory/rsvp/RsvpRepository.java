@@ -1,5 +1,8 @@
 package dev.rsvpfactory.rsvp;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -28,7 +31,7 @@ class RsvpRepository {
     Seating.State state(long eventId) {
         List<Party> confirmed = new ArrayList<>();
         List<Party> waitlist = new ArrayList<>();
-        jdbc.sql("SELECT member_id, party_size, status FROM rsvp WHERE event_id = :eventId ORDER BY id")
+        jdbc.sql("SELECT member_id, party_size, status FROM rsvp WHERE event_id = :eventId ORDER BY created_at, id")
                 .param("eventId", eventId)
                 .query((rs, row) -> {
                     Party party = new Party(rs.getLong("member_id"), rs.getInt("party_size"));
@@ -40,13 +43,14 @@ class RsvpRepository {
         return new Seating.State(confirmed, waitlist);
     }
 
-    void insert(long eventId, Party party, Placement placement) {
-        jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status)"
-                        + " VALUES (:eventId, :memberId, :partySize, :status)")
+    void insert(long eventId, Party party, Placement placement, Instant createdAt) {
+        jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status, created_at)"
+                        + " VALUES (:eventId, :memberId, :partySize, :status, :createdAt)")
                 .param("eventId", eventId)
                 .param("memberId", party.memberId())
                 .param("partySize", party.size())
                 .param("status", placement.name().toLowerCase(Locale.ROOT))
+                .param("createdAt", OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC))
                 .update();
     }
 
