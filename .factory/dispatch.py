@@ -83,7 +83,11 @@ def labelled_by(number: int) -> str | None:
 
 
 def open_factory_pr_tickets() -> set[int]:
-    pulls = api("/pulls?state=open&per_page=100") or []
+    """Tickets with an open factory PR, or a merged one: GitHub closes a ticket a few seconds after its PR
+    merges, and in that window it still looks ready (#28 was nearly built twice)."""
+    pulls = (api("/pulls?state=open&per_page=100") or []) + [
+        p for p in (api("/pulls?state=closed&sort=updated&direction=desc&per_page=30") or []) if p.get("merged_at")  # type: ignore[union-attr]
+    ]
     return {int(p["head"]["ref"][len(BRANCH_PREFIX):]) for p in pulls if p["head"]["ref"].startswith(BRANCH_PREFIX)}  # type: ignore[index]
 
 

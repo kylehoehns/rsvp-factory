@@ -80,10 +80,12 @@ export function push(token: string, branch: string, force = false) {
 
 // --- CI on factory PRs ---
 
-export type FactoryPr = { number: number; headRefName: string; headRefOid: string; labels: { name: string }[] };
+export type FactoryPr = {
+  number: number; headRefName: string; headRefOid: string; labels: { name: string }[]; mergeable: string;
+};
 
 export function openFactoryPrs(token: string, prefix: string): FactoryPr[] {
-  const prs = JSON.parse(gh(token, "pr", "list", "--state", "open", "--json", "number,headRefName,headRefOid,labels")) as FactoryPr[];
+  const prs = JSON.parse(gh(token, "pr", "list", "--state", "open", "--json", "number,headRefName,headRefOid,labels,mergeable")) as FactoryPr[];
   return prs.filter((pr) => pr.headRefName.startsWith(prefix));
 }
 
@@ -105,14 +107,13 @@ export function failedLog(runId: string): string {
   return lines.slice(-300).join("\n").slice(-40_000);
 }
 
-const ROUND = /<!-- factory-ci-round sha=([0-9a-f]+) -->/g;
-
-/** Commits the factory has already tried to fix CI on, from markers in its own PR comments. */
-export function ciRoundsTried(token: string, pr: number): string[] {
+/** Commits the factory has already run a fix round of this kind on, from markers in its own PR comments. */
+export function roundsTried(token: string, pr: number, kind: "ci" | "update"): string[] {
+  const marker = new RegExp(`<!-- factory-${kind}-round sha=([0-9a-f]+) -->`, "g");
   const bodies = JSON.parse(gh(token, "pr", "view", String(pr), "--json", "comments")).comments as { body: string }[];
-  return bodies.flatMap((c) => [...c.body.matchAll(ROUND)].map((m) => m[1]));
+  return bodies.flatMap((c) => [...c.body.matchAll(marker)].map((m) => m[1]));
 }
 
-export function roundMarker(sha: string): string {
-  return `<!-- factory-ci-round sha=${sha} -->`;
+export function roundMarker(kind: "ci" | "update", sha: string): string {
+  return `<!-- factory-${kind}-round sha=${sha} -->`;
 }

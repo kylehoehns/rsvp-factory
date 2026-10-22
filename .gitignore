@@ -42,3 +42,6 @@ node_modules/
 .sandcastle/
 .jqwik-database
 __pycache__/
+
+### Generated ###
+docs/modules/

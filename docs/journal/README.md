@@ -43,3 +43,4 @@ Updated as entries are added.
 | 10 | [The factory fixes its own CI, and keeps running](2026-10-21-10-the-factory-fixes-its-own-ci.md) |
 | 11 | [A brake that only ever failed](2026-10-21-11-a-brake-that-only-ever-failed.md) |
 | 12 | [Cross-checking against the consensus, and triaging findings](2026-10-22-12-cross-checking-and-triaging-findings.md) |
+| 13 | [Three tickets in flight](2026-10-22-13-three-in-flight.md) |

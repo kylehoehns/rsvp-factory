@@ -41,7 +41,7 @@ class ModularityTests {
 
     @Test
     void writeModuleDocs() {
-        // Written to docs/modules/ and committed; CI fails if the committed copy is stale.
+        // A build output in docs/modules (gitignored): committed copies went stale when parallel PRs merged.
         new Documenter(modules, Documenter.Options.defaults().withOutputFolder("../docs/modules"))
                 .writeDocumentation()
                 .writeIndividualModulesAsPlantUml();

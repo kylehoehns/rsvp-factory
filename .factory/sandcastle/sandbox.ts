@@ -69,7 +69,7 @@ export function pruneWorktrees() {
   run("git", ["worktree", "prune"]);
 }
 
-export type Session = { role: "implement" | "review" | "fixCi" | "fixReview"; prompt: string };
+export type Session = { role: "implement" | "review" | "fixCi" | "fixReview" | "updateBranch"; prompt: string };
 export type SessionsResult = { outcome: Outcome; read: (file: string) => string | undefined };
 
 /**
@@ -125,6 +125,7 @@ export async function runSessions(issue: number, branch: string, sessions: Sessi
       REVIEW_FILE: join(RUNS, "review.json"),
       ISSUE: String(issue),
     };
+    let last: Outcome = { outcome: "success", summary: "" };
     for (const session of sessions) {
       console.log(`#${issue}: ${session.role}…`);
       const started = Date.now();
@@ -146,10 +147,11 @@ export async function runSessions(issue: number, branch: string, sessions: Sessi
         commits: result.commits.length, tokens: sessionTokens(result.iterations.map((i) => i.sessionFilePath)),
       }) + "\n");
       if (outcome.outcome !== "success") return { outcome, read };
+      last = outcome; // keep the agent's own summary: it's what the PR comment for a fix round says
     }
     // Read the results before the sandbox (and its worktree) is disposed.
     const snapshot = Object.fromEntries(["pr-body.md", "review.json", "resolutions.json"].map((f) => [f, read(f)]));
-    return { outcome: { outcome: "success", summary: "" }, read: (file) => snapshot[file] };
+    return { outcome: last, read: (file) => snapshot[file] };
   } finally {
     privateDocker.stop();
   }

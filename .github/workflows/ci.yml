@@ -50,12 +50,6 @@ jobs:
       - name: Check (format, compile, null-safety, tests, architecture)
         run: ./gradlew check
 
-      - name: Generated module docs are committed
-        run: |
-          if ! git diff --exit-code -- docs/modules; then
-            echo "::error::docs/modules is stale. Run ./gradlew check locally and commit docs/modules."
-            exit 1
-          fi
 
       - name: Mutation-test the classes this PR changed
         if: github.event_name == 'pull_request'
