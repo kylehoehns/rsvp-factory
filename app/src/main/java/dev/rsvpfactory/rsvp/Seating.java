@@ -60,8 +60,20 @@ final class Seating {
         }
     }
 
-    /** The state after a change, and where the changing party ended up. */
-    record Outcome(State state, Placement placement) {}
+    /**
+     * The state after a change, where the changing party ended up, and the waitlisted parties the change promoted, in
+     * the order they were promoted.
+     */
+    record Outcome(State state, Placement placement, List<Party> promoted) {
+
+        Outcome {
+            promoted = List.copyOf(promoted);
+        }
+
+        Outcome(State state, Placement placement) {
+            this(state, placement, List.of());
+        }
+    }
 
     /** The state after a withdrawal, and the waitlisted parties it promoted, in the order they were promoted. */
     record Withdrawal(State state, List<Party> promoted) {
@@ -73,21 +85,18 @@ final class Seating {
 
     /**
      * A member's RSVP for their party. Confirmed when the party fits the open seats, otherwise it joins the end of the
-     * waitlist. RSVPing again with the same party changes nothing.
+     * waitlist. RSVPing again with the same party changes nothing; with a different party it changes the guests of the
+     * existing RSVP: a confirmed RSVP may grow only into open seats, a waitlisted one keeps its place in line, and
+     * seats a smaller party frees go to the waitlist. Adding guests, like a new RSVP, stops at the cutoff; removing
+     * them never does.
      *
-     * @throws SeatingRefusal when the party is over the guest limit, the cutoff has passed, or the member already has
-     *     an RSVP for a different party
+     * @throws SeatingRefusal when the party is over the guest limit, the cutoff has passed for a new RSVP or for added
+     *     guests, or a confirmed RSVP asks for more seats than are open
      */
     static Outcome rsvp(SeatingPlan plan, State state, Party party, Instant now) {
         Party held = state.confirmedParty(party.memberId());
         Party existing = held != null ? held : state.waitlistedParty(party.memberId());
-        if (existing != null) {
-            if (existing.size() != party.size()) {
-                throw new SeatingRefusal(
-                        "rsvp-party-change-unsupported",
-                        HttpStatus.CONFLICT,
-                        "Changing the guests of an existing RSVP is not possible yet.");
-            }
+        if (existing != null && existing.size() == party.size()) {
             return new Outcome(state, held != null ? Placement.CONFIRMED : Placement.WAITLISTED);
         }
         if (party.size() - 1 > plan.guestLimit()) {
@@ -96,9 +105,11 @@ final class Seating {
                     HttpStatus.UNPROCESSABLE_CONTENT,
                     "This event allows at most " + plan.guestLimit() + " guests per RSVP.");
         }
+        if (existing != null) {
+            return changeGuests(plan, state, party, held != null, now);
+        }
         if (!now.isBefore(plan.rsvpCutoff())) {
-            throw new SeatingRefusal(
-                    "rsvp-cutoff-passed", HttpStatus.CONFLICT, "The RSVP cutoff for this event has passed.");
+            throw cutoffPassed();
         }
         if (party.size() <= state.openSeats(plan)) {
             List<Party> confirmed = new ArrayList<>(state.confirmed());
@@ -161,15 +172,41 @@ final class Seating {
         return new CapacityChange(changed, new State(confirmed, waitlist), promoted);
     }
 
+    private static Outcome changeGuests(SeatingPlan plan, State state, Party party, boolean confirmedNow, Instant now) {
+        List<Party> confirmed = new ArrayList<>(state.confirmed());
+        List<Party> waitlist = new ArrayList<>(state.waitlist());
+        List<Party> side = confirmedNow ? confirmed : waitlist;
+        int index = indexOf(side, party.memberId());
+        int added = party.size() - side.get(index).size();
+        if (added > 0) {
+            if (!now.isBefore(plan.rsvpCutoff())) {
+                throw cutoffPassed();
+            }
+            if (confirmedNow && added > state.openSeats(plan)) {
+                throw new SeatingRefusal(
+                        "not-enough-open-seats",
+                        HttpStatus.CONFLICT,
+                        "There are not enough open seats to add guests; the RSVP stays as it is.");
+            }
+        }
+        side.set(index, party);
+        List<Party> promoted = promote(plan, confirmed, waitlist, now);
+        return new Outcome(
+                new State(confirmed, waitlist),
+                confirmedNow || promoted.contains(party) ? Placement.CONFIRMED : Placement.WAITLISTED,
+                promoted);
+    }
+
     /**
-     * Moves the earliest waitlisted parties that fit the open seats to confirmed, in place, before the cutoff only.
-     * Open seats only shrink, so a party that did not fit earlier in line never fits later: one pass suffices.
+     * Moves the earliest waitlisted parties that fit the open seats to confirmed, in place; none at or after the
+     * cutoff. Returns the parties promoted, in order.
      */
     private static List<Party> promote(SeatingPlan plan, List<Party> confirmed, List<Party> waitlist, Instant now) {
         List<Party> promoted = new ArrayList<>();
         if (now.isBefore(plan.rsvpCutoff())) {
             int open =
                     plan.capacity() - confirmed.stream().mapToInt(Party::size).sum();
+            // Open seats only shrink, so a party that did not fit earlier in line never fits later: one pass suffices.
             for (Party next : List.copyOf(waitlist)) {
                 if (next.size() <= open) {
                     open -= next.size();
@@ -180,5 +217,19 @@ final class Seating {
             }
         }
         return promoted;
+    }
+
+    private static int indexOf(List<Party> parties, long memberId) {
+        for (int i = 0; i < parties.size(); i++) {
+            if (parties.get(i).memberId() == memberId) {
+                return i;
+            }
+        }
+        throw new IllegalArgumentException("No party for member " + memberId);
+    }
+
+    private static SeatingRefusal cutoffPassed() {
+        return new SeatingRefusal(
+                "rsvp-cutoff-passed", HttpStatus.CONFLICT, "The RSVP cutoff for this event has passed.");
     }
 }

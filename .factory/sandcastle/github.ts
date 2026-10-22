@@ -78,6 +78,17 @@ export function push(token: string, branch: string, force = false) {
     ...(force ? ["--force"] : []), `https://github.com/${REPO}.git`, `${branch}:${branch}`]);
 }
 
+/** Ask for the second opinion on the PR's current head commit: adding the label starts
+ *  .github/workflows/claude-code-review.yml, whose pass counts toward the low tier (ADR 0003). */
+export function requestSecondOpinion(token: string, pr: number) {
+  try {
+    gh(token, "pr", "edit", String(pr), "--remove-label", "claude-review");
+  } catch {
+    // not labelled yet
+  }
+  gh(token, "pr", "edit", String(pr), "--add-label", "claude-review");
+}
+
 // --- CI on factory PRs ---
 
 export type FactoryPr = {

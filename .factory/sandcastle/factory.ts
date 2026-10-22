@@ -15,7 +15,7 @@
 // See docs/factory/how-it-works.md.
 
 import { join } from "node:path";
-import { api, appToken, gh, openFactoryPrs, push } from "./github.ts";
+import { api, appToken, gh, openFactoryPrs, push, requestSecondOpinion } from "./github.ts";
 import { autoMerge } from "./automerge.ts";
 import { addFollowUps, fileFollowUps, type Finding, flagDecisions, settleFindings, triageSecondOpinion } from "./findings.ts";
 import { fixPrs } from "./rounds.ts";
@@ -133,10 +133,10 @@ async function publish(token: string, issue: number, prBody: string | undefined,
   gh(token, "issue", "edit", String(issue), "--remove-label", "agent:in-progress");
   if (review) await postReview(token, pr, review);
 
-  // High-risk PRs get an independent second opinion (ADR 0003).
+  // Every factory PR gets the independent second opinion; its pass can make a small PR low (ADR 0003).
+  requestSecondOpinion(token, pr);
   const tier = run("python3", [".github/scripts/risk_gate.py", "--local", `origin/main...${branch}`]);
-  if (tier === "high") gh(token, "pr", "edit", String(pr), "--add-label", "claude-review");
-  console.log(`#${issue}: ${url} (${tier} risk)`);
+  console.log(`#${issue}: ${url} (${tier} risk before the second opinion)`);
 }
 
 async function buildTickets(claudeToken: string) {

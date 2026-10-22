@@ -5,7 +5,7 @@
   "maxCiRounds": 2,
   "maxReviewRounds": 2,
   "maxUpdateRounds": 2,
-  "autoMerge": "shadow",
+  "autoMerge": "on",
   "implementModel": "claude-sonnet-5-5",
   "reviewModel": "claude-sonnet-5-5",
   "fixCiModel": "claude-sonnet-5-5",

@@ -4,7 +4,7 @@
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { appToken, ciResult, failedLog, type FactoryPr, gh, openFactoryPrs, push, roundMarker, roundsTried } from "./github.ts";
+import { appToken, ciResult, failedLog, type FactoryPr, gh, openFactoryPrs, push, requestSecondOpinion, roundMarker, roundsTried } from "./github.ts";
 import { pruneWorktrees, runSessions, type Session } from "./sandbox.ts";
 import { BRANCH_PREFIX, config, forbiddenChanges, repoRoot, REPO, run, RUNS } from "./shared.ts";
 
@@ -44,6 +44,7 @@ async function fixRound(pr: FactoryPr, round: Round, claudeToken: string, hooks:
   }
   push(fresh, branch); // fast-forward only
   gh(fresh, "pr", "comment", String(pr.number), "--body", `${label}: ${outcome.summary}\n\n${roundMarker(round.kind, pr.headRefOid)}`);
+  requestSecondOpinion(fresh, pr.number); // the new commits haven't been read by anyone independent
   console.log(`PR #${pr.number}: pushed ${label}`);
 }
 

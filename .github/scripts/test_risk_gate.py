@@ -7,8 +7,8 @@ from risk_gate import ChangedFile, floor_tier
 POLICY = tomllib.loads((Path(__file__).parent.parent / "risk-policy.toml").read_text())
 
 
-def tier(*files: ChangedFile, author: str = "kylehoehns", trusted: bool = True, body: str = "") -> str:
-    return floor_tier(list(files), POLICY, author, trusted, body).tier
+def tier(*files: ChangedFile, author: str = "kylehoehns", trusted: bool = True, body: str = "", reviewed: bool = False) -> str:
+    return floor_tier(list(files), POLICY, author, trusted, body, reviewed).tier
 
 
 def added(path: str, changes: int = 10) -> ChangedFile:
@@ -107,6 +107,26 @@ class RiskTierTests(unittest.TestCase):
                     "",
                 )
                 self.assertTrue(any("acceptance suite" in reason for reason in decision.reasons))
+
+    def test_a_reviewed_feature_with_little_production_code_is_low(self):
+        feature = [
+            added("app/src/main/java/dev/rsvpfactory/rsvp/GuestChange.java", 120),
+            modified("app/src/main/java/dev/rsvpfactory/rsvp/RsvpService.java", 80),
+            added("app/src/test/java/dev/rsvpfactory/rsvp/GuestChangeTests.java", 540),
+            added("acceptance/src/test/java/dev/rsvpfactory/acceptance/GuestChangeScenarios.java", 60),
+        ]
+        self.assertEqual("low", tier(*feature, reviewed=True))
+        self.assertEqual("medium", tier(*feature, reviewed=False))
+
+    def test_a_reviewed_feature_with_too_much_production_code_is_medium(self):
+        self.assertEqual("medium", tier(added("app/src/main/java/dev/rsvpfactory/rsvp/Big.java", 201), reviewed=True))
+
+    def test_a_review_never_lowers_a_floor(self):
+        self.assertEqual("high", tier(added("app/src/main/resources/db/migration/V7__rsvp.sql", 5), reviewed=True))
+        scenario = ChangedFile("acceptance/src/test/java/dev/rsvpfactory/acceptance/RsvpScenarios.java", "modified", 3, deletions=1)
+        self.assertEqual("medium", tier(scenario, reviewed=True))
+        self.assertEqual("medium", tier(added("app/src/main/java/dev/rsvpfactory/rsvp/A.java"), reviewed=True, trusted=False))
+        self.assertEqual("medium", tier(added("app/src/main/java/dev/rsvpfactory/rsvp/A.java"), reviewed=True, body="**Door:** one-way"))
 
     def test_outside_contributors_are_never_low(self):
         self.assertEqual("medium", tier(modified("README.md"), author="someone", trusted=False))

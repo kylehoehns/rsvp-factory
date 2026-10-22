@@ -32,6 +32,15 @@ class EventRepository {
                 .single();
     }
 
+    /** Marks the event cancelled; false when it already was or does not exist. */
+    boolean cancel(long id) {
+        return jdbc.sql("UPDATE event SET status = :cancelled WHERE id = :id AND status <> :cancelled")
+                        .param("cancelled", EventStatus.CANCELLED.name())
+                        .param("id", id)
+                        .update()
+                > 0;
+    }
+
     Optional<EventDetails> find(long id) {
         return jdbc.sql(SELECT + " WHERE id = :id")
                 .param("id", id)

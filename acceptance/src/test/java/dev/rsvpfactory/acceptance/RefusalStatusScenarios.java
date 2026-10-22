@@ -7,16 +7,16 @@ import org.springframework.http.HttpStatus;
 class RefusalStatusScenarios extends AcceptanceScenario {
 
     @Test
-    void rsvpingAgainWithAnotherPartyIsAConflictAndKeepsTheFirstRsvp() {
+    void addingGuestsBeyondTheOpenSeatsIsAConflictAndKeepsTheFirstRsvp() {
         String groupId = api.groupWith("alice", "bob");
         String eventId = api.scheduleEvent(
                 "alice",
                 groupId,
-                Api.EventRequest.startingAt(NEXT_WEEK).withCapacity(10).withGuestLimit(2));
+                Api.EventRequest.startingAt(NEXT_WEEK).withCapacity(2).withGuestLimit(2));
 
         Api.assertConfirmed(api.rsvp("bob", eventId, 1), 2);
 
-        Api.assertRefused(api.rsvp("bob", eventId, 2), HttpStatus.CONFLICT, "rsvp-party-change-unsupported");
-        api.assertOpenSeats(eventId, 8);
+        Api.assertRefused(api.rsvp("bob", eventId, 2), HttpStatus.CONFLICT, "not-enough-open-seats");
+        api.assertOpenSeats(eventId, 0);
     }
 }

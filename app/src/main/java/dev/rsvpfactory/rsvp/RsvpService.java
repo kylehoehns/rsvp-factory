@@ -1,6 +1,7 @@
 package dev.rsvpfactory.rsvp;
 
 import dev.rsvpfactory.events.EventDetails;
+import dev.rsvpfactory.events.EventStatus;
 import dev.rsvpfactory.events.Events;
 import dev.rsvpfactory.groups.GroupAccess;
 import dev.rsvpfactory.identity.Member;
@@ -37,15 +38,22 @@ class RsvpService {
         this.clock = clock;
     }
 
-    /** Creates the member's RSVP for their party, or returns the one they already have for that party. */
+    /**
+     * Creates the member's RSVP for their party, or changes the guests of the one they already have, promoting from the
+     * waitlist into any seats that frees.
+     */
     @Transactional
     RsvpView rsvp(Member member, long eventId, int guests) {
+        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        if (event.status() == EventStatus.CANCELLED) {
+            throw new RuleBrokenException(
+                    "event-cancelled", HttpStatus.CONFLICT, "This event has been cancelled and takes no RSVPs.");
+        }
         if (!groups.isMember(event.groupId(), member.id())) {
             throw new RuleBrokenException(
                     "not-a-member", HttpStatus.FORBIDDEN, "Join the group before you RSVP to its events.");
         }
-        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         Seating.State before = rsvps.state(eventId);
         Party party = new Party(member.id(), 1 + guests);
         Seating.Outcome outcome;
@@ -56,11 +64,21 @@ class RsvpService {
         }
         int position = outcome.state().waitlistPosition(member.id());
         if (!outcome.state().equals(before)) {
-            rsvps.insert(eventId, party, outcome.placement());
-            publisher.publishEvent(
-                    outcome.placement() == Placement.CONFIRMED
-                            ? new RsvpConfirmed(eventId, member.id(), party.size())
-                            : new RsvpWaitlisted(eventId, member.id(), party.size(), position));
+            boolean changed = before.confirmed().stream().anyMatch(held -> held.memberId() == member.id())
+                    || before.waitlistPosition(member.id()) > 0;
+            if (changed) {
+                rsvps.changePartySize(eventId, member.id(), party.size());
+            } else {
+                rsvps.insert(eventId, party, outcome.placement());
+                publisher.publishEvent(
+                        outcome.placement() == Placement.CONFIRMED
+                                ? new RsvpConfirmed(eventId, member.id(), party.size())
+                                : new RsvpWaitlisted(eventId, member.id(), party.size(), position));
+            }
+            for (Party promoted : outcome.promoted()) {
+                rsvps.confirm(eventId, promoted.memberId());
+                publisher.publishEvent(new RsvpPromoted(eventId, promoted.memberId(), promoted.size()));
+            }
         }
         return RsvpView.of(outcome.placement(), party.size(), position);
     }
