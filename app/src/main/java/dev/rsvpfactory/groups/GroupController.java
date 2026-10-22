@@ -6,9 +6,11 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,6 +35,22 @@ class GroupController {
     @GetMapping("/groups/{groupId}")
     GroupView view(@PathVariable String groupId) {
         return groups.view(parse(groupId));
+    }
+
+    @PutMapping("/groups/{groupId}/members/me")
+    GroupView join(@PathVariable String groupId) {
+        return groups.join(currentMember.get(), parse(groupId));
+    }
+
+    @DeleteMapping("/groups/{groupId}/members/me")
+    ResponseEntity<Void> leave(@PathVariable String groupId) {
+        groups.leave(currentMember.get(), parse(groupId));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/groups/{groupId}/organizers")
+    GroupView makeOrganizer(@PathVariable String groupId, @Valid @RequestBody MakeOrganizerRequest request) {
+        return groups.makeOrganizer(currentMember.get(), parse(groupId), request.memberId());
     }
 
     private static long parse(String groupId) {

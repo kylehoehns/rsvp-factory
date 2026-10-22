@@ -24,9 +24,9 @@ System_Boundary("RsvpFactoryApplication_boundary", "RsvpFactoryApplication", $ta
 
 }
 
-Rel(RsvpFactoryApplication.RsvpFactoryApplication.Identity, RsvpFactoryApplication.RsvpFactoryApplication.Problems, "depends on", $techn="", $tags="", $link="")
 Rel(RsvpFactoryApplication.RsvpFactoryApplication.Groups, RsvpFactoryApplication.RsvpFactoryApplication.Problems, "depends on", $techn="", $tags="", $link="")
 Rel(RsvpFactoryApplication.RsvpFactoryApplication.Groups, RsvpFactoryApplication.RsvpFactoryApplication.Identity, "uses", $techn="", $tags="", $link="")
+Rel(RsvpFactoryApplication.RsvpFactoryApplication.Identity, RsvpFactoryApplication.RsvpFactoryApplication.Problems, "depends on", $techn="", $tags="", $link="")
 
 SHOW_LEGEND(true)
 hide stereotypes
