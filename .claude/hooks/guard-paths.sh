@@ -27,8 +27,9 @@ case "$rel" in
       exit 0
     fi ;;
   app/src/main/resources/db/migration/*)
-    if git cat-file -e "HEAD:$rel" 2>/dev/null; then
-      reason="$rel is already committed, and Flyway migrations are append-only. Add a new V<n>__*.sql instead."
+    # Frozen once it's on main (it may have been applied somewhere); a branch's own new migration can still change.
+    if git cat-file -e "origin/main:$rel" 2>/dev/null; then
+      reason="$rel is on main, and Flyway migrations are append-only. Add a new V<n>__*.sql instead."
     else
       exit 0
     fi ;;

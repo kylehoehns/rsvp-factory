@@ -1,8 +1,9 @@
 // The factory, run on the maintainer's machine: `npm run factory` in this folder. It keeps running and,
 // every `pollSeconds`, does four things (`npm run factory -- --once` does them once and exits):
 //
-//   1. fix CI   a factory PR whose `ci` check failed gets a fix session on its branch with the failure log,
-//               at most `maxCiRounds` times; after that it's labelled agent:blocked for the maintainer
+//   1. fix      a factory PR that conflicts with main gets a session that merges main in (at most
+//               `maxUpdateRounds`); one whose `ci` check failed gets a session with the failure log (at most
+//               `maxCiRounds`); after that it's labelled agent:blocked for the maintainer (rounds.ts)
 //   2. review   a factory PR's second opinion is triaged: blockers get a fix round (at most `maxReviewRounds`),
 //               one-way doors are labelled decision-needed, follow-ups are listed on the PR (findings.ts)
 //   +  auto-merge  low-risk PRs with everything green and resolved: commented in shadow mode, merged when on
@@ -13,18 +14,17 @@
 // Agents never hold a GitHub credential: github.ts does, with the app key from the macOS keychain.
 // See docs/factory/how-it-works.md.
 
-import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { api, appToken, ciResult, ciRoundsTried, failedLog, gh, openFactoryPrs, push, roundMarker } from "./github.ts";
+import { api, appToken, gh, openFactoryPrs, push } from "./github.ts";
 import { autoMerge } from "./automerge.ts";
 import { addFollowUps, fileFollowUps, type Finding, flagDecisions, settleFindings, triageSecondOpinion } from "./findings.ts";
+import { fixPrs } from "./rounds.ts";
 import { pruneWorktrees, runSessions } from "./sandbox.ts";
 import { BRANCH_PREFIX, config, forbiddenChanges, keychain, type Outcome, repoRoot, REPO, run, RUNS } from "./shared.ts";
 
 type Review = { summary: string; findings: Finding[] };
 
 const TASK = join(repoRoot, RUNS, "task.md");
-const CI_LOG = join(repoRoot, RUNS, "ci-failure.log");
 
 function writeTask(issue: number, token: string) {
   run("python3", ["-c", `import sys; sys.path.insert(0, '.factory'); import dispatch; dispatch.write_task(${issue}, '${TASK}')`],
@@ -54,49 +54,10 @@ function ask(token: string, issue: number, outcome: Outcome) {
   console.log(`#${issue}: needs-info (${outcome.questions?.length ?? 0} question(s))`);
 }
 
-// --- 1. Fixing red CI on factory PRs ---
+// --- 1. Fix rounds: red CI, and conflicts with main (rounds.ts) ---
 
-async function fixRedCi(claudeToken: string) {
-  const token = await appToken();
-  for (const pr of openFactoryPrs(token, BRANCH_PREFIX)) {
-    if (pr.labels.some((l) => l.name === "agent:blocked")) continue;
-    const ci = await ciResult(token, pr.headRefOid);
-    if (!ci?.failed) continue;
-    const tried = ciRoundsTried(token, pr.number);
-    if (tried.includes(pr.headRefOid)) continue; // this commit already had its round
-    if (tried.length >= config.maxCiRounds) {
-      block(token, pr.number, `CI is still failing after ${tried.length} fix rounds. Latest failure: ` +
-        `https://github.com/${REPO}/actions/runs/${ci.runId}`);
-      continue;
-    }
-
-    const round = tried.length + 1;
-    const issue = Number(pr.headRefName.slice(BRANCH_PREFIX.length));
-    const branch = pr.headRefName;
-    console.log(`PR #${pr.number}: CI failed, fix round ${round} of ${config.maxCiRounds}`);
-    writeTask(issue, token);
-    writeFileSync(CI_LOG, failedLog(ci.runId));
-    run("git", ["fetch", "--quiet", "origin", "main", branch]);
-    pruneWorktrees();
-    run("git", ["branch", "--force", branch, `origin/${branch}`]);
-
-    const { outcome } = await runSessions(issue, branch, [{ role: "fixCi", prompt: "fix-ci.md" }], [TASK, CI_LOG],
-      claudeToken);
-    const fresh = await appToken();
-    const commits = run("git", ["rev-list", `origin/${branch}..${branch}`]);
-    const forbidden = forbiddenChanges(branch);
-    if (outcome.outcome !== "success" || !commits || forbidden.length) {
-      const why = forbidden.length ? `the fix touched the factory's own controls: ${forbidden.join(", ")}`
-        : !commits ? `the fix session made no commits (${outcome.summary})` : outcome.summary;
-      gh(fresh, "pr", "comment", String(pr.number), "--body", `CI round ${round} of ${config.maxCiRounds}: ${why}\n\n${roundMarker(pr.headRefOid)}`);
-      block(fresh, pr.number, why);
-      continue;
-    }
-    push(fresh, branch); // fast-forward only
-    gh(fresh, "pr", "comment", String(pr.number), "--body",
-      `CI round ${round} of ${config.maxCiRounds}: ${outcome.summary}\n\n${roundMarker(pr.headRefOid)}`);
-    console.log(`PR #${pr.number}: pushed CI fix round ${round}`);
-  }
+async function fixFactoryPrs(claudeToken: string) {
+  await fixPrs(claudeToken, { writeTask, block });
 }
 
 // --- 2. Second opinions on factory PRs ---
@@ -212,7 +173,7 @@ if (!/^sk-ant-[A-Za-z0-9_-]+$/.test(claudeToken)) {
 const once = process.argv.includes("--once");
 console.log(once ? "Factory: one pass." : `Factory: watching every ${config.pollSeconds}s. Ctrl+C to stop.`);
 for (;;) {
-  for (const step of [fixRedCi, reviewFindings, lowRiskMerges, followUps, buildTickets]) {
+  for (const step of [fixFactoryPrs, reviewFindings, lowRiskMerges, followUps, buildTickets]) {
     try {
       await step(claudeToken);
     } catch (error) {

@@ -33,22 +33,11 @@ class ModularityTests {
     }
 
     @Test
-    void moduleDocsAreCommitted() throws Exception {
+    void writeModuleDocs() {
+        // A build output in docs/modules (gitignored): committed copies went stale when parallel PRs merged.
         new Documenter(modules, Documenter.Options.defaults().withOutputFolder("../docs/modules"))
                 .writeDocumentation()
                 .writeIndividualModulesAsPlantUml();
-
-        // Agents twice opened PRs with stale module docs (#33, #36), so this fails here rather than in CI.
-        Process git = new ProcessBuilder("git", "status", "--porcelain", "--", "docs/modules")
-                .directory(new java.io.File(".."))
-                .redirectErrorStream(true)
-                .start();
-        String changed = new String(git.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-        git.waitFor();
-        assertThat(changed)
-                .as(
-                        "The module structure changed, so docs/modules was regenerated. Commit docs/modules with your change.")
-                .isEmpty();
     }
 
     private static boolean packageAnnotatedNullMarked(String packageName) {

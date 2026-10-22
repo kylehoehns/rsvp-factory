@@ -69,7 +69,7 @@ export function pruneWorktrees() {
   run("git", ["worktree", "prune"]);
 }
 
-export type Session = { role: "implement" | "review" | "fixCi" | "fixReview"; prompt: string };
+export type Session = { role: "implement" | "review" | "fixCi" | "fixReview" | "updateBranch"; prompt: string };
 export type SessionsResult = { outcome: Outcome; read: (file: string) => string | undefined };
 
 /**
