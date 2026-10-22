@@ -26,7 +26,7 @@ const DIND_IMAGE = "docker:29.9.2-dind";
 const RUNS = ".factory/runs"; // gitignored; shared with the sandbox through the worktree
 const PROTECTED = /^(\.github|\.factory|\.agents|\.claude|\.githooks|scripts)\//;
 
-type Outcome = { outcome: "success" | "blocked"; summary: string };
+type Outcome = { outcome: "success" | "question" | "blocked"; summary: string; questions?: string[] };
 
 function run(command: string, args: string[], env: Record<string, string> = {}): string {
   return execFileSync(command, args, { cwd: repoRoot, encoding: "utf8", env: { ...process.env, ...env } }).trim();
@@ -156,7 +156,7 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
         signal: AbortSignal.timeout(config[`${role}TimeoutMinutes`] * 60_000),
       });
       const outcome = readOutcome(sandbox.worktreePath, role);
-      if (outcome.outcome !== "success") return { ...outcome, summary: `${role}: ${outcome.summary}` };
+      if (outcome.outcome !== "success") return outcome;
     }
 
     const bodyFile = join(sandbox.worktreePath, RUNS, "pr-body.md");
@@ -171,6 +171,17 @@ function block(token: string, issue: number, reason: string) {
   gh(token, "issue", "comment", String(issue), "--repo", REPO, "--body",
     `The factory stopped: ${reason}\n\nA human needs to look. Remove \`agent:blocked\` and re-apply \`ready-for-agent\` to retry.`);
   console.log(`#${issue}: blocked: ${reason}`);
+}
+
+/** Pocock's needs-info: leave the questions on the ticket and move on; answers arrive as comments. */
+function ask(token: string, issue: number, outcome: Outcome) {
+  const questions = (outcome.questions ?? []).map((q, i) => `${i + 1}. ${q}`).join("\n");
+  gh(token, "issue", "comment", String(issue), "--repo", REPO, "--body",
+    `The factory has questions before it can build this ticket.\n\n${questions || outcome.summary}\n\n` +
+      "Answer in a comment, then re-apply `ready-for-agent`. The next run reads every comment on this ticket.");
+  gh(token, "issue", "edit", String(issue), "--repo", REPO, "--add-label", "needs-info",
+    "--remove-label", "ready-for-agent", "--remove-label", "agent:in-progress");
+  console.log(`#${issue}: needs-info (${outcome.questions?.length ?? 0} question(s))`);
 }
 
 function publish(token: string, issue: number, prBody: string | undefined) {
@@ -205,6 +216,7 @@ for (;;) {
     const result = await buildTicket(issue, claudeToken);
     const fresh = await appToken();
     if (result.outcome === "success") publish(fresh, issue, result.prBody);
+    else if (result.outcome === "question") ask(fresh, issue, result);
     else block(fresh, issue, result.summary);
   } catch (error) {
     block(await appToken(), issue, `the run failed: ${(error as Error).message}`);

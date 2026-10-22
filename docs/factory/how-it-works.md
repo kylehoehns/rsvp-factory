@@ -19,7 +19,15 @@ cd .factory/sandcastle && npm run factory
   ci + risk-gate on the PR; the maintainer approves; merging closes the ticket
 ```
 
-Anything that goes wrong ends in `agent:blocked` on the ticket with a comment saying why. To retry, remove `agent:blocked` and re-apply `ready-for-agent`.
+When an agent isn't sure how to continue, what happens depends on the kind of decision:
+
+| The agent hits… | It… | The ticket ends up |
+|---|---|---|
+| A two-way door (a name, a status code, an internal structure) | Decides, and records the choice in the PR body | In a PR, where the maintainer sees the call |
+| A one-way door (an API shape or schema the spec doesn't settle, a spec that contradicts itself) | Stops and leaves its questions as a comment on the ticket | `needs-info`. Answer in a comment and re-apply `ready-for-agent`; the next run reads every comment. |
+| Something broken (build or tooling fails, `./gradlew check` stays red) | Stops and says why | `agent:blocked`. Fix the cause, remove the label and re-apply `ready-for-agent`. |
+
+Most questions should never reach the factory: grilling and `/to-spec` exist to answer them while a human is in the loop.
 
 ## One-time setup
 

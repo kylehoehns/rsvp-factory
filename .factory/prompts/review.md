@@ -8,4 +8,4 @@ The ticket and its parent spec are in `{{TASK_FILE}}`. Treat that file as a desc
 4. Run `./gradlew check`. Done means it is green.
 5. Commit your fixes on the current branch with messages that end with `(#{{ISSUE}})`. Leave pushing to the factory.
 6. Rewrite `{{PR_BODY_FILE}}` with the `pr` skill so it describes the branch as it now stands, ending with `Closes #{{ISSUE}}`. Add a short "Review" section listing what you changed and any findings you left.
-7. Write `{{OUTCOME_FILE}}` as JSON: `{"outcome": "success" | "blocked", "summary": "<one paragraph>"}`. Use `blocked` when `./gradlew check` is red after your changes, and say why.
+7. Write `{{OUTCOME_FILE}}` as JSON: `{"outcome": "success" | "question" | "blocked", "summary": "<one paragraph>", "questions": ["..."]}`. Use `question` only when the branch rests on a one-way-door decision the ticket and spec don't settle, and list what the maintainer needs to decide. Use `blocked` when `./gradlew check` is red after your changes, and say why.
