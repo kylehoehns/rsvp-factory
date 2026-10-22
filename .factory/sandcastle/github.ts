@@ -35,6 +35,42 @@ export async function api<T>(token: string, path: string, init: RequestInit = {}
   return (await response.json()) as T;
 }
 
+export async function graphql<T>(token: string, query: string, variables: Record<string, unknown>): Promise<T> {
+  const response = await fetch("https://api.github.com/graphql", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ query, variables }),
+  });
+  const result = (await response.json()) as { data: T; errors?: { message: string }[] };
+  if (result.errors?.length) throw new Error(`GitHub GraphQL: ${result.errors.map((e) => e.message).join("; ")}`);
+  return result.data;
+}
+
+export type Thread = { id: string; isResolved: boolean; path: string; line: number | null; body: string };
+
+/** The PR's review threads, with the first comment of each. */
+export async function reviewThreads(token: string, pr: number): Promise<Thread[]> {
+  const [owner, name] = REPO.split("/");
+  const data = await graphql<{ repository: { pullRequest: { reviewThreads: { nodes: {
+    id: string; isResolved: boolean; path: string; line: number | null; comments: { nodes: { body: string }[] };
+  }[] } } } }>(token, `query($owner: String!, $name: String!, $pr: Int!) {
+    repository(owner: $owner, name: $name) { pullRequest(number: $pr) { reviewThreads(first: 100) { nodes {
+      id isResolved path line comments(first: 1) { nodes { body } } } } } } }`, { owner, name, pr });
+  return data.repository.pullRequest.reviewThreads.nodes.map((t) => ({ ...t, body: t.comments.nodes[0]?.body ?? "" }));
+}
+
+/** Reply on a review thread and, unless `keepOpen`, resolve it. */
+export async function settleThread(token: string, threadId: string, reply: string | undefined, keepOpen = false) {
+  if (reply) {
+    await graphql(token, `mutation($id: ID!, $body: String!) {
+      addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $id, body: $body }) { comment { id } } }`,
+      { id: threadId, body: reply });
+  }
+  if (!keepOpen) {
+    await graphql(token, `mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { id } } }`, { id: threadId });
+  }
+}
+
 /** Push a local branch as the app. Fast-forward only unless `force`, so a human's commits are never lost. */
 export function push(token: string, branch: string, force = false) {
   const auth = Buffer.from(`x-access-token:${token}`).toString("base64");

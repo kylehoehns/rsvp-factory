@@ -1,9 +1,12 @@
 // The factory, run on the maintainer's machine: `npm run factory` in this folder. It keeps running and,
-// every `pollSeconds`, does two things (`npm run factory -- --once` does them once and exits):
+// every `pollSeconds`, does four things (`npm run factory -- --once` does them once and exits):
 //
 //   1. fix CI   a factory PR whose `ci` check failed gets a fix session on its branch with the failure log,
 //               at most `maxCiRounds` times; after that it's labelled agent:blocked for the maintainer
-//   2. tickets  each ready ticket (up to the work-in-progress limit) is dispatched, implemented and reviewed
+//   2. review   a factory PR's second opinion is triaged: blockers get a fix round (at most `maxReviewRounds`),
+//               one-way doors are labelled decision-needed, follow-ups are listed on the PR (findings.ts)
+//   3. follow-ups  when a factory PR merges, its follow-ups are filed as needs-triage tickets
+//   4. tickets  each ready ticket (up to the work-in-progress limit) is dispatched, implemented and reviewed
 //               in a sandbox, then published as a PR by the factory app
 //
 // Agents never hold a GitHub credential: github.ts does, with the app key from the macOS keychain.
@@ -12,11 +15,11 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { api, appToken, ciResult, ciRoundsTried, failedLog, gh, openFactoryPrs, push, roundMarker } from "./github.ts";
+import { addFollowUps, fileFollowUps, type Finding, flagDecisions, settleFindings, triageSecondOpinion } from "./findings.ts";
 import { pruneWorktrees, runSessions } from "./sandbox.ts";
 import { BRANCH_PREFIX, config, forbiddenChanges, keychain, type Outcome, repoRoot, REPO, run, RUNS } from "./shared.ts";
 
-type ReviewComment = { path?: string; line?: number; body: string };
-type Review = { summary: string; comments: ReviewComment[] };
+type Review = { summary: string; findings: Finding[] };
 
 const TASK = join(repoRoot, RUNS, "task.md");
 const CI_LOG = join(repoRoot, RUNS, "ci-failure.log");
@@ -94,7 +97,25 @@ async function fixRedCi(claudeToken: string) {
   }
 }
 
-// --- 2. Building tickets ---
+// --- 2. Second opinions on factory PRs ---
+
+async function reviewFindings(claudeToken: string) {
+  const token = await appToken();
+  for (const pr of openFactoryPrs(token, BRANCH_PREFIX)) {
+    if (pr.labels.some((l) => l.name === "agent:blocked")) continue;
+    const issue = Number(pr.headRefName.slice(BRANCH_PREFIX.length));
+    await triageSecondOpinion(token, pr.number, pr.headRefName, issue, claudeToken, appToken,
+      (target, reason) => block(token, target, reason), () => writeTask(issue, token));
+  }
+}
+
+// --- 3. Follow-ups from merged PRs ---
+
+async function followUps() {
+  fileFollowUps(await appToken(), BRANCH_PREFIX);
+}
+
+// --- 4. Building tickets ---
 
 function dispatch(token: string): number | undefined {
   const output = run("python3", [".factory/dispatch.py"], { GITHUB_TOKEN: token, GITHUB_REPOSITORY: REPO, TASK_FILE: TASK });
@@ -104,23 +125,28 @@ function dispatch(token: string): number | undefined {
 
 /** The factory reviewer's findings as a GitHub review from the app, inline where GitHub accepts the line. */
 async function postReview(token: string, pr: number, review: Review) {
-  const asText = (c: ReviewComment) => `- ${c.path ? `\`${c.path}${c.line ? `:${c.line}` : ""}\`: ` : ""}${c.body}`;
-  const post = (inline: ReviewComment[], inBody: ReviewComment[]) =>
+  const text = (f: Finding) => `[${f.kind}] **${f.title}**: ${f.body}`;
+  const asLine = (f: Finding) => `- ${f.path ? `\`${f.path}${f.line ? `:${f.line}` : ""}\`: ` : ""}${text(f)}`;
+  const post = (inline: Finding[], inBody: Finding[]) =>
     api(token, `/pulls/${pr}/reviews`, {
       method: "POST",
       body: JSON.stringify({
         event: "COMMENT",
-        body: ["**Factory review** (fresh session, `code-review` skill)", review.summary, ...inBody.map(asText)].join("\n\n"),
-        comments: inline.map((c) => ({ path: c.path, line: c.line, side: "RIGHT", body: c.body })),
+        body: ["**Factory review** (fresh session, `code-review` skill)", review.summary, ...inBody.map(asLine)].join("\n\n"),
+        comments: inline.map((f) => ({ path: f.path, line: f.line, side: "RIGHT", body: text(f) })),
       }),
     });
-  const inline = review.comments.filter((c) => c.path && c.line);
+  const inline = review.findings.filter((f) => f.path && f.line);
   try {
-    await post(inline, review.comments.filter((c) => !inline.includes(c)));
+    await post(inline, review.findings.filter((f) => !inline.includes(f)));
   } catch {
     // A line outside the diff makes GitHub reject the whole review; keep every finding in the body instead.
-    await post([], review.comments).catch((e) => console.log(`#${pr}: could not post the factory review: ${e}`));
+    await post([], review.findings).catch((e) => console.log(`#${pr}: could not post the factory review: ${e}`));
   }
+  addFollowUps(token, pr, review.findings.filter((f) => f.kind === "follow-up"));
+  flagDecisions(token, pr, review.findings.filter((f) => f.kind === "one-way-door"));
+  // What the reviewer already fixed, or deferred to a ticket, needs no one's attention: resolve those threads.
+  await settleFindings(token, pr, review.findings.filter((f) => f.kind === "fixed" || f.kind === "follow-up"));
 }
 
 async function publish(token: string, issue: number, prBody: string | undefined, review: Review | undefined) {
@@ -177,7 +203,7 @@ if (!/^sk-ant-[A-Za-z0-9_-]+$/.test(claudeToken)) {
 const once = process.argv.includes("--once");
 console.log(once ? "Factory: one pass." : `Factory: watching every ${config.pollSeconds}s. Ctrl+C to stop.`);
 for (;;) {
-  for (const step of [fixRedCi, buildTickets]) {
+  for (const step of [fixRedCi, reviewFindings, followUps, buildTickets]) {
     try {
       await step(claudeToken);
     } catch (error) {
