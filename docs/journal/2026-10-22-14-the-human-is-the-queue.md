@@ -6,7 +6,7 @@
 - **Follow-ups filed themselves.** At merge the factory filed #42, #43 and #44 as `needs-triage`. Triage took a minute: two duplicated tickets already in the spec (cancel an event, change the guest count) and were closed with a note on the ticket they belong to; one became `ready-for-agent`. The factory picked it up within the next poll.
 - **Scope leaked between tickets.** #46 (ticket #7, refuse RSVPs over the guest limit or after the cutoff) changed only tests: 49 added lines, no production code. The agent on #41 had already built both refusals. The #7 agent noticed, wrote tests to prove the behaviour, and stopped. Honest, but the ticket boundary didn't hold.
 - **A tests-only PR was rated medium.** The risk policy only rates docs as low, and "anything no rule mentions is medium". Nothing is wrong with the gate; the policy just never considered a PR that adds tests and nothing else.
-- With the work-in-progress limit at 3, three medium PRs (#46, #47, #48) filled every slot. The factory stopped until the maintainer approved them; all three merged within minutes of being looked at.
+- With the work-in-progress limit at 3, three medium PRs (#46, #47, #48) filled every slot. The factory stopped until the maintainer approved them. Two merged at once; the third was set to merge as soon as its CI passed.
 
 **Numbers so far** (from `docs/factory/metrics.md`)
 
