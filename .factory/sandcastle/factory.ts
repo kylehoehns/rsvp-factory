@@ -14,7 +14,7 @@ import { claudeCode, createSandbox } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { execFileSync } from "node:child_process";
 import { createSign } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -92,10 +92,12 @@ function startPrivateDocker(issue: number): { network: string; host: string; sto
     // nothing left over from an earlier run
   }
   run("docker", ["network", "create", network]);
-  run("docker", ["run", "-d", "--privileged", "--name", host, "--network", network, "-e", "DOCKER_TLS_CERTDIR=", DIND_IMAGE]);
+  // Plain TCP is fine here: the daemon is only reachable on this run's private network.
+  run("docker", ["run", "-d", "--privileged", "--name", host, "--network", network, "-e", "DOCKER_TLS_CERTDIR=",
+    DIND_IMAGE, "--tls=false"]);
   for (let attempt = 0; ; attempt++) {
     try {
-      run("docker", ["exec", host, "docker", "info"]);
+      execFileSync("docker", ["exec", host, "docker", "info"], { stdio: "ignore" });
       return { network, host, stop };
     } catch (error) {
       if (attempt > 60) throw error;
@@ -124,7 +126,6 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
     await using sandbox = await createSandbox({
       branch,
       cwd: repoRoot,
-      copyToWorktree: [join(RUNS, "task.md")],
       sandbox: docker({
         imageName: IMAGE,
         network: privateDocker.network,
@@ -136,6 +137,11 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
         },
       }),
     });
+
+    // .factory/runs/ is gitignored, so a fresh worktree doesn't have it; the worktree is bind-mounted,
+    // so writing here on the host is what the agent sees.
+    mkdirSync(join(sandbox.worktreePath, RUNS), { recursive: true });
+    copyFileSync(join(repoRoot, RUNS, "task.md"), join(sandbox.worktreePath, RUNS, "task.md"));
 
     const promptArgs = {
       TASK_FILE: join(RUNS, "task.md"),
