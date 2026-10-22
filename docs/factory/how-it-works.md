@@ -67,4 +67,6 @@ The repo's hooks run inside the container with `RSVP_FACTORY=1`, so the factory'
 | `implementTimeoutMinutes`, `reviewTimeoutMinutes` | Hard stop per session |
 | `githubAppId` | The factory app (public; the private key is in the keychain) |
 
-Session logs go to `.factory/runs/logs/` and stay on the machine (gitignored).
+Session logs go to `.factory/runs/logs/` and stay on the machine (gitignored). Every agent session also appends its outcome, duration, commits and token totals to `.factory/runs/metrics.jsonl`; `python3 scripts/factory_metrics.py` combines that with the factory PRs on GitHub into [`metrics.md`](metrics.md): outcomes, rounds, time to merge, reverts, and each risk tier against what the maintainer did.
+
+Agents commit as `rsvp-factory-bot[bot]` (set in the sandbox's environment), so GitHub shows the factory, not the maintainer, as the author of agent code.
