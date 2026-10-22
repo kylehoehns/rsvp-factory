@@ -4,7 +4,6 @@ import dev.rsvpfactory.identity.CurrentMember;
 import dev.rsvpfactory.problems.RuleBrokenException;
 import jakarta.validation.Valid;
 import java.net.URI;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,8 +38,7 @@ class GroupController {
         try {
             return Long.parseLong(groupId);
         } catch (NumberFormatException e) {
-            throw new RuleBrokenException(
-                    "group-not-found", HttpStatus.NOT_FOUND, "There is no group " + groupId + ".");
+            throw RuleBrokenException.notFound("group", groupId);
         }
     }
 }

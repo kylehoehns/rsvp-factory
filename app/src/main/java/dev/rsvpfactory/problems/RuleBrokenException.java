@@ -17,6 +17,12 @@ public class RuleBrokenException extends RuntimeException {
         this.status = status;
     }
 
+    /** The refusal for an id that names nothing: rule {@code <what>-not-found}, for example {@code group-not-found}. */
+    public static RuleBrokenException notFound(String what, Object id) {
+        return new RuleBrokenException(
+                what + "-not-found", HttpStatus.NOT_FOUND, "There is no " + what + " " + id + ".");
+    }
+
     public String rule() {
         return rule;
     }

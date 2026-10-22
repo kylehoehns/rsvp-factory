@@ -28,8 +28,7 @@ class EventService implements Events {
     @Transactional
     EventDetails schedule(Member organizer, long groupId, ScheduleEventRequest request) {
         if (!groups.exists(groupId)) {
-            throw new RuleBrokenException(
-                    "group-not-found", HttpStatus.NOT_FOUND, "There is no group " + groupId + ".");
+            throw RuleBrokenException.notFound("group", groupId);
         }
         if (!groups.isOrganizer(groupId, organizer.id())) {
             throw new RuleBrokenException(

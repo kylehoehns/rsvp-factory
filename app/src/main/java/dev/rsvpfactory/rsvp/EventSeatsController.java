@@ -7,7 +7,6 @@ import dev.rsvpfactory.problems.RuleBrokenException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,17 +30,17 @@ class EventSeatsController {
 
     @GetMapping("/events/{eventId}")
     EventSeatsView view(@PathVariable String eventId) {
-        long id = parse(eventId, "event-not-found", "event");
-        EventDetails event = events.find(id).orElseThrow(() -> notFound("event-not-found", "event", eventId));
-        SeatingPlan plan = plans.find(id).orElseThrow(() -> notFound("event-not-found", "event", eventId));
+        long id = parse(eventId, "event");
+        EventDetails event = events.find(id).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        SeatingPlan plan = plans.find(id).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         return EventSeatsView.of(event, plan);
     }
 
     @GetMapping("/groups/{groupId}/events")
     List<EventSeatsView> inGroup(@PathVariable String groupId) {
-        long id = parse(groupId, "group-not-found", "group");
+        long id = parse(groupId, "group");
         if (!groups.exists(id)) {
-            throw notFound("group-not-found", "group", groupId);
+            throw RuleBrokenException.notFound("group", groupId);
         }
         List<EventDetails> inGroup = events.inGroup(id);
         Map<Long, SeatingPlan> byEvent =
@@ -54,15 +53,11 @@ class EventSeatsController {
                 .toList();
     }
 
-    private static long parse(String id, String rule, String what) {
+    private static long parse(String id, String what) {
         try {
             return Long.parseLong(id);
         } catch (NumberFormatException e) {
-            throw notFound(rule, what, id);
+            throw RuleBrokenException.notFound(what, id);
         }
-    }
-
-    private static RuleBrokenException notFound(String rule, String what, String id) {
-        return new RuleBrokenException(rule, HttpStatus.NOT_FOUND, "There is no " + what + " " + id + ".");
     }
 }
