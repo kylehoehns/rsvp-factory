@@ -4,6 +4,8 @@ The factory can merge its own PRs when they are low risk, but only in stages set
 
 **Stop rule, decided before turning it on:** if any auto-merged PR is reverted, auto-merge pauses (qualifying PRs get a "paused" comment instead) until the maintainer looks into it and switches it back on. **Turning it on** waits for shadow-mode data in `docs/factory/metrics.md`: low-tier PRs merged as-is by the maintainer, with none changed or reverted, over at least a week.
 
+**What happened:** on 2026-10-22 the maintainer turned it on after one day, with no low-tier factory PRs yet, once tests-only PRs became low. The stop rule is the safety net instead of the week of data.
+
 The published rollouts follow the same shape: Vercel decided in advance to stop if reverts exceeded three times its 1.7% baseline (671 low-risk PRs skipped review with no reverts); Rewind ran a week of shadow mode and saw about 99% agreement before enabling. Every published low tier excludes schema and interface changes, so for this repo auto-merge is expected to cover docs, tests and small chores rather than feature tickets.
 
 ## Consequences
