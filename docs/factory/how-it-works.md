@@ -1,9 +1,13 @@
 # How the factory works
 
-The factory turns GitHub issues labelled `ready-for-agent` into reviewed pull requests. It runs on the maintainer's machine, started by hand, and works through ready tickets until none is left or the work-in-progress limit is reached. In Matt Pocock's terms it is the "night shift": the unattended half, between the human "day shift" that shapes tickets and the one that reviews and merges PRs.
+The factory turns GitHub issues labelled `ready-for-agent` into reviewed pull requests, and keeps its own pull requests' CI green. It runs on the maintainer's machine: start it once with `npm run factory` and it checks GitHub every `pollSeconds` until stopped with Ctrl+C (`npm run factory -- --once` does a single pass). In Matt Pocock's terms it is the "night shift": the unattended half, between the human "day shift" that shapes tickets and the one that reviews and merges PRs.
 
 ```text
-cd .factory/sandcastle && npm run factory
+cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctrl+C)
+  │
+  fix CI     for each open factory PR whose `ci` check failed on its latest commit: a fix session in a
+             sandbox on that branch, given the failed steps' log; pushes the fix and comments
+             "CI round N of maxCiRounds". After the last round it labels the PR agent:blocked.
   │
   for each ready ticket (lowest number first, all blockers closed, under wipLimit)
   │

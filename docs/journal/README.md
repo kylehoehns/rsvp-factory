@@ -40,3 +40,4 @@ Updated as entries are added.
 | 7 | [The first factory runs (four attempts)](2026-10-21-07-the-first-factory-runs-four-attempts.md) |
 | 8 | [The first factory PR, and making review visible](2026-10-21-08-the-first-factory-pr-and-making-review-visible.md) |
 | 9 | [A second opinion, and a brake that was silently off](2026-10-21-09-a-second-opinion-and-a-silent-brake.md) |
+| 10 | [The factory fixes its own CI, and keeps running](2026-10-21-10-the-factory-fixes-its-own-ci.md) |

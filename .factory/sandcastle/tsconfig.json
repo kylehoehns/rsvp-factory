@@ -3,10 +3,16 @@
     "target": "es2024",
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "lib": ["es2024", "esnext.disposable"],
+    "lib": [
+      "es2024",
+      "esnext.disposable"
+    ],
     "strict": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
-  "files": ["factory.ts"]
+  "include": [
+    "*.ts"
+  ]
 }
