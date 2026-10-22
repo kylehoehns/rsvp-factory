@@ -13,8 +13,10 @@ cd .factory/sandcastle && npm run factory
   implement  Claude, in the container: tdd at the spec's seams, an acceptance scenario,
              ./gradlew check green, commits, PR body (pr skill), outcome
   review     a fresh Claude session in the same container: code-review skill, fixes, PR body
-  publish    factory.ts refuses changes to the factory's own controls, pushes the branch and
-             opens the PR as the factory app
+  publish    factory.ts refuses changes to the factory's own controls, pushes the branch, opens the
+             PR as the factory app, and posts the reviewer's findings as a review on it
+  high tier  if the risk policy puts the PR in the high tier, it adds the claude-review label, which
+             starts the independent second opinion (.github/workflows/claude-code-review.yml)
   │
   ci + risk-gate on the PR; the maintainer approves; merging closes the ticket
 ```

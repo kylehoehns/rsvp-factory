@@ -128,7 +128,33 @@ def post_status(sha: str, state: str, description: str) -> None:
     )
 
 
+def local_files(diff_range: str) -> list[ChangedFile]:
+    """The same file list the API gives, from a local git diff. Renames count as delete + add, so a file
+    moved out of a high-risk path still raises the tier."""
+    import subprocess
+
+    def git(*args: str) -> list[str]:
+        out = subprocess.run(["git", "diff", "--no-renames", *args, diff_range], capture_output=True, text=True, check=True)
+        return [line for line in out.stdout.splitlines() if line]
+
+    statuses = {path: {"A": "added", "D": "removed"}.get(code, "modified") for code, path in (l.split("\t", 1) for l in git("--name-status"))}
+    files = []
+    for line in git("--numstat"):
+        added, deleted, path = line.split("\t", 2)
+        changes = 0 if added == "-" else int(added) + int(deleted)  # "-" means a binary file
+        files.append(ChangedFile(path, statuses.get(path, "modified"), changes))
+    return files
+
+
 def main() -> int:
+    if len(sys.argv) == 3 and sys.argv[1] == "--local":
+        # Used by the local factory before it opens a PR: print the tier for a diff range.
+        with open(os.environ.get("RISK_POLICY", ".github/risk-policy.toml"), "rb") as policy_file:
+            policy = tomllib.load(policy_file)
+        decision = floor_tier(local_files(sys.argv[2]), policy, "factory", True, "")
+        print(decision.tier)
+        return 0
+
     pr_number = int(os.environ["PR_NUMBER"])
     mode = os.environ.get("RISK_GATE_MODE", "shadow")
     with open(os.environ.get("RISK_POLICY", ".github/risk-policy.toml"), "rb") as policy_file:

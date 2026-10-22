@@ -27,6 +27,8 @@ const RUNS = ".factory/runs"; // gitignored; shared with the sandbox through the
 const PROTECTED = /^(\.github|\.factory|\.agents|\.claude|\.githooks|scripts)\//;
 
 type Outcome = { outcome: "success" | "question" | "blocked"; summary: string; questions?: string[] };
+type ReviewComment = { path?: string; line?: number; body: string };
+type Review = { summary: string; comments: ReviewComment[] };
 
 function run(command: string, args: string[], env: Record<string, string> = {}): string {
   return execFileSync(command, args, { cwd: repoRoot, encoding: "utf8", env: { ...process.env, ...env } }).trim();
@@ -114,7 +116,10 @@ function readOutcome(worktree: string, role: string): Outcome {
   return outcome;
 }
 
-async function buildTicket(issue: number, claudeToken: string): Promise<Outcome & { prBody?: string }> {
+async function buildTicket(
+  issue: number,
+  claudeToken: string,
+): Promise<Outcome & { prBody?: string; review?: Review }> {
   const branch = `agent/issue-${issue}`;
   run("git", ["fetch", "--quiet", "origin", "main"]);
   run("git", ["branch", "--force", branch, "origin/main"]);
@@ -150,6 +155,7 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
       TASK_FILE: join(RUNS, "task.md"),
       OUTCOME_FILE: join(RUNS, "outcome.json"),
       PR_BODY_FILE: join(RUNS, "pr-body.md"),
+      REVIEW_FILE: join(RUNS, "review.json"),
       ISSUE: String(issue),
     };
     const agent = (model: string) => claudeCode(model);
@@ -169,7 +175,13 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
     }
 
     const bodyFile = join(sandbox.worktreePath, RUNS, "pr-body.md");
-    return { outcome: "success", summary: "", prBody: existsSync(bodyFile) ? readFileSync(bodyFile, "utf8") : undefined };
+    const reviewFile = join(sandbox.worktreePath, RUNS, "review.json");
+    return {
+      outcome: "success",
+      summary: "",
+      prBody: existsSync(bodyFile) ? readFileSync(bodyFile, "utf8") : undefined,
+      review: existsSync(reviewFile) ? (JSON.parse(readFileSync(reviewFile, "utf8")) as Review) : undefined,
+    };
   } finally {
     privateDocker.stop();
   }
@@ -193,7 +205,28 @@ function ask(token: string, issue: number, outcome: Outcome) {
   console.log(`#${issue}: needs-info (${outcome.questions?.length ?? 0} question(s))`);
 }
 
-function publish(token: string, issue: number, prBody: string | undefined) {
+/** The factory reviewer's findings as a GitHub review from the app, inline where GitHub accepts the line. */
+async function postReview(token: string, pr: number, review: Review) {
+  const inline = review.comments.filter((c) => c.path && c.line);
+  const general = review.comments.filter((c) => !(c.path && c.line));
+  const asText = (c: ReviewComment) => `- ${c.path ? `\`${c.path}${c.line ? `:${c.line}` : ""}\`: ` : ""}${c.body}`;
+  const post = (comments: ReviewComment[], extra: ReviewComment[]) =>
+    fetch(`https://api.github.com/repos/${REPO}/pulls/${pr}/reviews`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
+      body: JSON.stringify({
+        event: "COMMENT",
+        body: [`**Factory review** (fresh session, \`code-review\` skill)`, review.summary, ...extra.map(asText)].join("\n\n"),
+        comments: comments.map((c) => ({ path: c.path, line: c.line, side: "RIGHT", body: c.body })),
+      }),
+    });
+  let response = await post(inline, general);
+  // A line outside the diff makes GitHub reject the whole review; keep every finding by moving them all to the body.
+  if (!response.ok) response = await post([], review.comments);
+  if (!response.ok) console.log(`#${pr}: could not post the factory review: ${response.status} ${await response.text()}`);
+}
+
+async function publish(token: string, issue: number, prBody: string | undefined, review: Review | undefined) {
   const branch = `agent/issue-${issue}`;
   const changed = run("git", ["diff", "--name-only", `origin/main...${branch}`]).split("\n").filter(Boolean);
   if (changed.length === 0) return block(token, issue, "the agents reported success but made no commits.");
@@ -207,8 +240,14 @@ function publish(token: string, issue: number, prBody: string | undefined) {
   const title = gh(token, "issue", "view", String(issue), "--repo", REPO, "--json", "title", "--jq", ".title");
   const body = prBody?.includes(`Closes #${issue}`) ? prBody : `${prBody ?? ""}\n\nCloses #${issue}\n`;
   const url = gh(token, "pr", "create", "--repo", REPO, "--base", "main", "--head", branch, "--title", title, "--body", body);
+  const pr = Number(url.split("/").pop());
   gh(token, "issue", "edit", String(issue), "--repo", REPO, "--remove-label", "agent:in-progress");
-  console.log(`#${issue}: ${url}`);
+  if (review) await postReview(token, pr, review);
+
+  // High-risk PRs get an independent second opinion (ADR 0003): a different model with a security brief.
+  const tier = run("python3", [".github/scripts/risk_gate.py", "--local", `origin/main...${branch}`]);
+  if (tier === "high") gh(token, "pr", "edit", String(pr), "--repo", REPO, "--add-label", "claude-review");
+  console.log(`#${issue}: ${url} (${tier} risk)`);
 }
 
 // --- The shift ---
@@ -229,7 +268,7 @@ for (;;) {
   try {
     const result = await buildTicket(issue, claudeToken);
     const fresh = await appToken();
-    if (result.outcome === "success") publish(fresh, issue, result.prBody);
+    if (result.outcome === "success") await publish(fresh, issue, result.prBody, result.review);
     else if (result.outcome === "question") ask(fresh, issue, result);
     else block(fresh, issue, result.summary);
   } catch (error) {
