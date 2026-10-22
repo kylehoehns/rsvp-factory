@@ -18,6 +18,8 @@ decide() { # decision, reason
 }
 
 case "$rel" in
+  .factory/runs/*)
+    exit 0 ;; # gitignored scratch space the factory shares with its agents (task, outcome, PR body)
   acceptance/*Scenarios.java)
     if git cat-file -e "HEAD:$rel" 2>/dev/null; then
       reason="$rel is an existing acceptance scenario, which protects shipped behaviour. Add a new scenario class instead; changing this one needs the maintainer (ADR 0002)."

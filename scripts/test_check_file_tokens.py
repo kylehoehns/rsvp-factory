@@ -37,6 +37,7 @@ class FileTokenLimitTests(unittest.TestCase):
             self.write("docs/modules/all-docs.adoc", 30_000),
             self.write(".agents/skills/tdd/SKILL.md", 30_000),
             self.write("gradlew", 30_000),
+            self.write(".factory/sandcastle/package-lock.json", 30_000),
         ]
         self.assertEqual([], violations(paths, self.root))
 
