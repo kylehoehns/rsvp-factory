@@ -131,6 +131,9 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
         network: privateDocker.network,
         mounts: [{ hostPath: gradleCache, sandboxPath: "/home/agent/.gradle" }],
         env: {
+          // Sandcastle 0.12.0's createSandbox() ignores claudeCode({ env }) (it starts the container with
+          // an empty agent env and sandbox.run() never adds it), so the token goes in the sandbox env.
+          CLAUDE_CODE_OAUTH_TOKEN: claudeToken,
           RSVP_FACTORY: "1",
           DOCKER_HOST: `tcp://${privateDocker.host}:2375`,
           TESTCONTAINERS_HOST_OVERRIDE: privateDocker.host,
@@ -149,7 +152,7 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
       PR_BODY_FILE: join(RUNS, "pr-body.md"),
       ISSUE: String(issue),
     };
-    const agent = (model: string) => claudeCode(model, { env: { CLAUDE_CODE_OAUTH_TOKEN: claudeToken } });
+    const agent = (model: string) => claudeCode(model);
 
     for (const role of ["implement", "review"] as const) {
       console.log(`#${issue}: ${role}…`);
