@@ -23,4 +23,6 @@ pitest {
     outputFormats = setOf("HTML", "XML")
     timestampedReports = false
     failWhenNoMutations = false
+    // CI passes -PpitThreshold for a PR's changed classes; locally the report is advisory.
+    mutationThreshold = providers.gradleProperty("pitThreshold").map(String::toInt).orElse(0)
 }
