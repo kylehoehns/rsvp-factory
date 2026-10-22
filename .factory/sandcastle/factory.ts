@@ -5,6 +5,7 @@
 //               at most `maxCiRounds` times; after that it's labelled agent:blocked for the maintainer
 //   2. review   a factory PR's second opinion is triaged: blockers get a fix round (at most `maxReviewRounds`),
 //               one-way doors are labelled decision-needed, follow-ups are listed on the PR (findings.ts)
+//   +  auto-merge  low-risk PRs with everything green and resolved: commented in shadow mode, merged when on
 //   3. follow-ups  when a factory PR merges, its follow-ups are filed as needs-triage tickets
 //   4. tickets  each ready ticket (up to the work-in-progress limit) is dispatched, implemented and reviewed
 //               in a sandbox, then published as a PR by the factory app
@@ -15,6 +16,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { api, appToken, ciResult, ciRoundsTried, failedLog, gh, openFactoryPrs, push, roundMarker } from "./github.ts";
+import { autoMerge } from "./automerge.ts";
 import { addFollowUps, fileFollowUps, type Finding, flagDecisions, settleFindings, triageSecondOpinion } from "./findings.ts";
 import { pruneWorktrees, runSessions } from "./sandbox.ts";
 import { BRANCH_PREFIX, config, forbiddenChanges, keychain, type Outcome, repoRoot, REPO, run, RUNS } from "./shared.ts";
@@ -107,6 +109,13 @@ async function reviewFindings(claudeToken: string) {
     await triageSecondOpinion(token, pr.number, pr.headRefName, issue, claudeToken, appToken,
       (target, reason) => block(token, target, reason), () => writeTask(issue, token));
   }
+}
+
+// --- Auto-merge for low-risk PRs (off / shadow / on, ADR 0006) ---
+
+async function lowRiskMerges() {
+  const token = await appToken();
+  await autoMerge(token, openFactoryPrs(token, BRANCH_PREFIX));
 }
 
 // --- 3. Follow-ups from merged PRs ---
@@ -203,7 +212,7 @@ if (!/^sk-ant-[A-Za-z0-9_-]+$/.test(claudeToken)) {
 const once = process.argv.includes("--once");
 console.log(once ? "Factory: one pass." : `Factory: watching every ${config.pollSeconds}s. Ctrl+C to stop.`);
 for (;;) {
-  for (const step of [fixRedCi, reviewFindings, followUps, buildTickets]) {
+  for (const step of [fixRedCi, reviewFindings, lowRiskMerges, followUps, buildTickets]) {
     try {
       await step(claudeToken);
     } catch (error) {

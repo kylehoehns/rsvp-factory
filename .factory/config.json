@@ -4,6 +4,7 @@
   "pollSeconds": 60,
   "maxCiRounds": 2,
   "maxReviewRounds": 2,
+  "autoMerge": "shadow",
   "implementModel": "claude-sonnet-5-5",
   "reviewModel": "claude-sonnet-5-5",
   "fixCiModel": "claude-sonnet-5-5",
