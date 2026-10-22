@@ -125,13 +125,53 @@ final class Seating {
         List<Party> waitlist = new ArrayList<>(state.waitlist());
         waitlist.removeIf(party -> party.memberId() == memberId);
 
+        List<Party> promoted = promote(plan, confirmed, waitlist, now);
+        return new Withdrawal(new State(confirmed, waitlist), promoted);
+    }
+
+    /** The plan and state after an organizer changes the capacity, and the parties the new seats promoted. */
+    record CapacityChange(SeatingPlan plan, State state, List<Party> promoted) {
+
+        CapacityChange {
+            promoted = List.copyOf(promoted);
+        }
+    }
+
+    /**
+     * An organizer raising or lowering the capacity. New seats go to the earliest waitlisted parties that fit,
+     * repeatedly, before the cutoff only.
+     *
+     * @throws SeatingRefusal when the capacity is not positive or is below the seats confirmed parties hold
+     */
+    static CapacityChange changeCapacity(SeatingPlan plan, State state, int capacity, Instant now) {
+        if (capacity < 1) {
+            throw new SeatingRefusal(
+                    "capacity-not-positive", HttpStatus.BAD_REQUEST, "Capacity must be a positive number of seats.");
+        }
+        if (capacity < state.confirmedSeats()) {
+            throw new SeatingRefusal(
+                    "capacity-below-confirmed-seats",
+                    HttpStatus.CONFLICT,
+                    "Confirmed parties hold " + state.confirmedSeats() + " seats; capacity cannot go below that.");
+        }
+        SeatingPlan changed = new SeatingPlan(capacity, plan.guestLimit(), plan.rsvpCutoff());
+        List<Party> confirmed = new ArrayList<>(state.confirmed());
+        List<Party> waitlist = new ArrayList<>(state.waitlist());
+        List<Party> promoted = promote(changed, confirmed, waitlist, now);
+        return new CapacityChange(changed, new State(confirmed, waitlist), promoted);
+    }
+
+    /**
+     * Moves the earliest waitlisted parties that fit the open seats to confirmed, in place, before the cutoff only.
+     * Open seats only shrink, so a party that did not fit earlier in line never fits later: one pass suffices.
+     */
+    private static List<Party> promote(SeatingPlan plan, List<Party> confirmed, List<Party> waitlist, Instant now) {
         List<Party> promoted = new ArrayList<>();
         if (now.isBefore(plan.rsvpCutoff())) {
             int open =
                     plan.capacity() - confirmed.stream().mapToInt(Party::size).sum();
-            // Open seats only shrink, so a party that did not fit earlier in line never fits later: one pass suffices.
-            for (Party next : state.waitlist()) {
-                if (next.memberId() != memberId && next.size() <= open) {
+            for (Party next : List.copyOf(waitlist)) {
+                if (next.size() <= open) {
                     open -= next.size();
                     waitlist.remove(next);
                     confirmed.add(next);
@@ -139,6 +179,6 @@ final class Seating {
                 }
             }
         }
-        return new Withdrawal(new State(confirmed, waitlist), promoted);
+        return promoted;
     }
 }

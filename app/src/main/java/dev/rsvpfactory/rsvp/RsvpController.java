@@ -28,6 +28,11 @@ class RsvpController {
         return rsvps.rsvp(currentMember.get(), parse(eventId), request.guestCount());
     }
 
+    @PutMapping("/events/{eventId}/capacity")
+    EventSeatsView changeCapacity(@PathVariable String eventId, @Valid @RequestBody CapacityRequest request) {
+        return rsvps.changeCapacity(currentMember.get(), parse(eventId), request.capacity());
+    }
+
     @GetMapping("/events/{eventId}/rsvps/me")
     RsvpView mine(@PathVariable String eventId) {
         return rsvps.mine(currentMember.get(), parse(eventId));
