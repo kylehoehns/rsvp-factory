@@ -50,6 +50,21 @@ class RsvpRepository {
                 .update();
     }
 
+    void delete(long eventId, long memberId) {
+        jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId AND member_id = :memberId")
+                .param("eventId", eventId)
+                .param("memberId", memberId)
+                .update();
+    }
+
+    void confirm(long eventId, long memberId) {
+        jdbc.sql("UPDATE rsvp SET status = :status WHERE event_id = :eventId AND member_id = :memberId")
+                .param("status", Placement.CONFIRMED.name().toLowerCase(Locale.ROOT))
+                .param("eventId", eventId)
+                .param("memberId", memberId)
+                .update();
+    }
+
     Map<Long, Seats> seats(Collection<Long> eventIds) {
         if (eventIds.isEmpty()) {
             return Map.of();

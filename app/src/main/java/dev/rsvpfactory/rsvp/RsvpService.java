@@ -84,6 +84,35 @@ class RsvpService {
                 .orElseThrow(() -> RuleBrokenException.notFound("rsvp", eventId));
     }
 
+    /** Withdraws the member's RSVP, confirmed or waitlisted, and promotes from the waitlist into the seats it frees. */
+    @Transactional
+    void withdraw(Member member, long eventId) {
+        if (events.find(eventId).isEmpty()) {
+            throw RuleBrokenException.notFound("event", eventId);
+        }
+        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        Seating.State before = rsvps.state(eventId);
+        Seating.Withdrawal withdrawal;
+        try {
+            withdrawal = Seating.withdraw(plan, before, member.id(), Instant.now(clock));
+        } catch (SeatingRefusal refusal) {
+            throw RuleBrokenException.notFound("rsvp", eventId);
+        }
+        Party withdrawn = before.confirmed().stream()
+                .filter(party -> party.memberId() == member.id())
+                .findFirst()
+                .orElseGet(() -> before.waitlist().stream()
+                        .filter(party -> party.memberId() == member.id())
+                        .findFirst()
+                        .orElseThrow());
+        rsvps.delete(eventId, member.id());
+        publisher.publishEvent(new RsvpWithdrawn(eventId, member.id(), withdrawn.size()));
+        for (Party promoted : withdrawal.promoted()) {
+            rsvps.confirm(eventId, promoted.memberId());
+            publisher.publishEvent(new RsvpPromoted(eventId, promoted.memberId(), promoted.size()));
+        }
+    }
+
     private static HttpStatus statusOf(SeatingRefusal refusal) {
         return switch (refusal.rule()) {
             case "guest-limit-exceeded" -> HttpStatus.UNPROCESSABLE_CONTENT;

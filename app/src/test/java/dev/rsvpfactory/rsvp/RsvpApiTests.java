@@ -53,6 +53,16 @@ class RsvpApiTests {
             void on(RsvpWaitlisted event) {
                 events.add(event);
             }
+
+            @EventListener
+            void on(RsvpWithdrawn event) {
+                events.add(event);
+            }
+
+            @EventListener
+            void on(RsvpPromoted event) {
+                events.add(event);
+            }
         }
     }
 
@@ -138,6 +148,17 @@ class RsvpApiTests {
 
     private ResponseSpec mine(String member, String eventId) {
         return client().get()
+                .uri("/events/" + eventId + "/rsvps/me")
+                .headers(h -> {
+                    if (!member.isEmpty()) {
+                        h.setBasicAuth(member, PASSWORD);
+                    }
+                })
+                .exchange();
+    }
+
+    private ResponseSpec withdraw(String member, String eventId) {
+        return client().delete()
                 .uri("/events/" + eventId + "/rsvps/me")
                 .headers(h -> {
                     if (!member.isEmpty()) {
@@ -359,5 +380,95 @@ class RsvpApiTests {
             assertThat(w.partySize()).isEqualTo(1);
             assertThat(w.position()).isEqualTo(1);
         });
+    }
+
+    @Test
+    void withdrawingAConfirmedRsvpFreesItsSeatsAndPromotesTheWaitlistInOrder() {
+        String eventId = event(groupWith("alice", "bob", "carol", "dave"), 3, 2);
+        rsvp("bob", eventId, 2).expectStatus().isOk();
+        rsvp("carol", eventId, 2).expectStatus().isOk();
+        rsvp("dave", eventId, 0).expectStatus().isOk();
+
+        withdraw("bob", eventId).expectStatus().isNoContent();
+
+        mine("bob", eventId).expectStatus().isNotFound();
+        mine("carol", eventId)
+                .expectBody()
+                .jsonPath("$.status")
+                .isEqualTo("confirmed")
+                .jsonPath("$.partySize")
+                .isEqualTo(3);
+        mine("dave", eventId)
+                .expectBody()
+                .jsonPath("$.status")
+                .isEqualTo("waitlisted")
+                .jsonPath("$.waitlistPosition")
+                .isEqualTo(1);
+        assertOpenSeats(eventId, 0, 1);
+    }
+
+    @Test
+    void aLargerPartyAtTheHeadIsSkippedForASmallerOneThatFitsAndKeepsItsPlace() {
+        String eventId = event(groupWith("alice", "bob", "carol", "dave"), 4, 3);
+        rsvp("bob", eventId, 1).expectStatus().isOk();
+        rsvp("carol", eventId, 1).expectStatus().isOk();
+        rsvp("dave", eventId, 2).expectStatus().isOk();
+        rsvp("alice", eventId, 0).expectStatus().isOk();
+        mine("dave", eventId).expectBody().jsonPath("$.waitlistPosition").isEqualTo(1);
+
+        withdraw("bob", eventId).expectStatus().isNoContent();
+
+        mine("alice", eventId).expectBody().jsonPath("$.status").isEqualTo("confirmed");
+        mine("dave", eventId)
+                .expectBody()
+                .jsonPath("$.status")
+                .isEqualTo("waitlisted")
+                .jsonPath("$.waitlistPosition")
+                .isEqualTo(1);
+        assertOpenSeats(eventId, 1, 1);
+    }
+
+    @Test
+    void withdrawingAWaitlistedRsvpLeavesTheSeatsAlone() {
+        String eventId = event(groupWith("alice", "bob", "carol"), 1, 0);
+        rsvp("bob", eventId, 0).expectStatus().isOk();
+        rsvp("carol", eventId, 0).expectStatus().isOk();
+
+        withdraw("carol", eventId).expectStatus().isNoContent();
+
+        mine("carol", eventId).expectStatus().isNotFound();
+        assertOpenSeats(eventId, 0, 0);
+    }
+
+    @Test
+    void withdrawingWithoutAnRsvpIsNotFoundAndWithoutSigningInIsNotAuthenticated() {
+        String eventId = event(groupWith("alice", "bob"), 5, 0);
+
+        assertRefused(withdraw("bob", eventId), 404, "rsvp-not-found");
+        assertRefused(withdraw("bob", "999999"), 404, "event-not-found");
+        assertRefused(withdraw("bob", "nope"), 404, "event-not-found");
+        assertRefused(withdraw("", eventId), 401, "not-authenticated");
+    }
+
+    @Test
+    void withdrawalsAndPromotionsArePublishedAsEvents() {
+        String eventId = event(groupWith("alice", "bob", "carol"), 2, 1);
+        long event = Long.parseLong(eventId);
+        rsvp("bob", eventId, 1).expectStatus().isOk();
+        rsvp("carol", eventId, 0).expectStatus().isOk();
+
+        withdraw("bob", eventId).expectStatus().isNoContent();
+
+        List<Object> forEvent = published.events.stream()
+                .filter(e -> (e instanceof RsvpWithdrawn w && w.eventId() == event)
+                        || (e instanceof RsvpPromoted p && p.eventId() == event))
+                .toList();
+        assertThat(forEvent).hasSize(2);
+        assertThat(forEvent.get(0))
+                .isInstanceOfSatisfying(
+                        RsvpWithdrawn.class, w -> assertThat(w.partySize()).isEqualTo(2));
+        assertThat(forEvent.get(1))
+                .isInstanceOfSatisfying(
+                        RsvpPromoted.class, p -> assertThat(p.partySize()).isEqualTo(1));
     }
 }
