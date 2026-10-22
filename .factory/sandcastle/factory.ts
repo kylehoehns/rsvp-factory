@@ -211,6 +211,11 @@ function publish(token: string, issue: number, prBody: string | undefined) {
 // --- The shift ---
 
 const claudeToken = keychain("rsvp-factory-claude-token");
+// Fail before claiming a ticket: a wrong keychain item otherwise surfaces as "Not logged in" inside the sandbox.
+if (!/^sk-ant-[A-Za-z0-9_-]+$/.test(claudeToken)) {
+  throw new Error("The keychain item 'rsvp-factory-claude-token' doesn't look like a Claude token (sk-ant-...). " +
+    "Re-run .factory/sandcastle/setup-keychain.sh with the output of 'claude setup-token'.");
+}
 for (;;) {
   const token = await appToken(); // short-lived; mint a fresh one per ticket
   const issue = dispatch(token);
