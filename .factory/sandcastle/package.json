@@ -1,0 +1,19 @@
+{
+  "name": "rsvp-factory-night-shift",
+  "private": true,
+  "type": "module",
+  "description": "Runs the factory locally: Sandcastle sandboxes on the maintainer's machine.",
+  "scripts": {
+    "night-shift": "tsx night-shift.ts",
+    "build-image": "docker build -t rsvp-factory-sandbox:25 --build-arg AGENT_UID=$(id -u) --build-arg AGENT_GID=$(id -g) .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-hero/sandcastle": "0.12.0",
+    "tsx": "4.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "5.9.3"
+  }
+}

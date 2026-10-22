@@ -6,7 +6,7 @@ A community events platform (groups, events, RSVPs, waitlists, check-in) built b
 
 `./gradlew check` green is the definition of done. For the tight inner loop (one test, one module, formatting, mutation testing) use the `spring-feedback` skill.
 
-Testcontainers needs Docker. On Colima, export these first or every container test fails with "Could not find a valid Docker environment":
+Testcontainers needs Docker. Inside the factory sandbox `DOCKER_HOST` is already set; leave it alone. On a Mac using Colima, export these first or every container test fails with "Could not find a valid Docker environment":
 
 ```sh
 export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock

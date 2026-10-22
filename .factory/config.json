@@ -1,10 +1,8 @@
 {
-  "runner": "claude-headless",
+  "githubAppId": 5419025,
   "wipLimit": 1,
-  "implementModel": "sonnet",
-  "reviewModel": "sonnet",
-  "implementMaxTurns": 200,
-  "reviewMaxTurns": 80,
+  "implementModel": "claude-sonnet-5-5",
+  "reviewModel": "claude-sonnet-5-5",
   "implementTimeoutMinutes": 45,
   "reviewTimeoutMinutes": 20
 }

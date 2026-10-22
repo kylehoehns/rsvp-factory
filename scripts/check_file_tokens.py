@@ -27,6 +27,8 @@ IGNORED = [
     "gradlew.bat",
     "gradle/verification-metadata.xml",
     "*.lockfile",
+    "*package-lock.json",
+    "*.lock",
     "LICENSE*",
     ".agents/skills/*",  # vendored from mattpocock/skills; updated by script, not by agents
 ]
