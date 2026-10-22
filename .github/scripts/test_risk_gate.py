@@ -21,10 +21,10 @@ def modified(path: str, changes: int = 10) -> ChangedFile:
 
 class RiskTierTests(unittest.TestCase):
     def test_a_small_docs_change_is_low(self):
-        self.assertEqual("low", tier(modified("docs/journal.md"), modified("README.md")))
+        self.assertEqual("low", tier(modified("docs/journal/README.md"), modified("README.md")))
 
     def test_a_large_docs_change_is_medium(self):
-        self.assertEqual("medium", tier(modified("docs/journal.md", changes=101)))
+        self.assertEqual("medium", tier(modified("docs/journal/README.md", changes=101)))
 
     def test_agent_instructions_and_decisions_are_not_low(self):
         self.assertEqual("medium", tier(modified("AGENTS.md")))
