@@ -49,7 +49,7 @@ export function pruneWorktrees() {
   run("git", ["worktree", "prune"]);
 }
 
-export type Session = { role: "implement" | "review" | "fixCi"; prompt: string };
+export type Session = { role: "implement" | "review" | "fixCi" | "fixReview"; prompt: string };
 export type SessionsResult = { outcome: Outcome; read: (file: string) => string | undefined };
 
 /**
@@ -93,6 +93,8 @@ export async function runSessions(issue: number, branch: string, sessions: Sessi
     const promptArgs = {
       TASK_FILE: join(RUNS, "task.md"),
       CI_LOG_FILE: join(RUNS, "ci-failure.log"),
+      FINDINGS_FILE: join(RUNS, "findings.json"),
+      RESOLUTIONS_FILE: join(RUNS, "resolutions.json"),
       OUTCOME_FILE: join(RUNS, "outcome.json"),
       PR_BODY_FILE: join(RUNS, "pr-body.md"),
       REVIEW_FILE: join(RUNS, "review.json"),
@@ -116,7 +118,7 @@ export async function runSessions(issue: number, branch: string, sessions: Sessi
       if (outcome.outcome !== "success") return { outcome, read };
     }
     // Read the results before the sandbox (and its worktree) is disposed.
-    const snapshot = Object.fromEntries(["pr-body.md", "review.json"].map((f) => [f, read(f)]));
+    const snapshot = Object.fromEntries(["pr-body.md", "review.json", "resolutions.json"].map((f) => [f, read(f)]));
     return { outcome: { outcome: "success", summary: "" }, read: (file) => snapshot[file] };
   } finally {
     privateDocker.stop();

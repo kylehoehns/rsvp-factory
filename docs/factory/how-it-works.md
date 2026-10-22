@@ -8,6 +8,10 @@ cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctr
   fix CI     for each open factory PR whose `ci` check failed on its latest commit: a fix session in a
              sandbox on that branch, given the failed steps' log; pushes the fix and comments
              "CI round N of maxCiRounds". After the last round it labels the PR agent:blocked.
+  review     for each open factory PR with a new second opinion: blockers get a review-fix round (at most
+             maxReviewRounds), then the second opinion runs again; one-way doors get decision-needed;
+             follow-ups are listed on the PR. Each handled finding's thread gets a reply and is resolved.
+  follow-ups for each merged factory PR, its listed follow-ups are filed as needs-triage tickets
   │
   for each ready ticket (lowest number first, all blockers closed, under wipLimit)
   │

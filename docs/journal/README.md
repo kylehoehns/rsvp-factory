@@ -42,3 +42,4 @@ Updated as entries are added.
 | 9 | [A second opinion, and a brake that was silently off](2026-10-21-09-a-second-opinion-and-a-silent-brake.md) |
 | 10 | [The factory fixes its own CI, and keeps running](2026-10-21-10-the-factory-fixes-its-own-ci.md) |
 | 11 | [A brake that only ever failed](2026-10-21-11-a-brake-that-only-ever-failed.md) |
+| 12 | [Cross-checking against the consensus, and triaging findings](2026-10-22-12-cross-checking-and-triaging-findings.md) |

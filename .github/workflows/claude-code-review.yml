@@ -48,10 +48,21 @@ jobs:
             - Schema and migrations: anything hard to undo, data that could be lost, constraints that will bite later.
             - Secrets and credentials: anything that would be unsafe in a public repository.
 
-            Post each real problem as an inline comment on the line it's about, saying what could happen and what
-            you'd change. Then post one summary comment on the PR that starts with "Second opinion (security)"
-            and either lists the problems or says plainly that you found none. Don't approve or request changes:
-            the maintainer decides.
+            Sort each problem into one kind:
+            - blocker: introduced by this PR, and you can show how it goes wrong (an attack path, a request that
+              leaks data, a migration that loses data). The factory will fix blockers before merge.
+            - one-way-door: expensive to undo later (schema, public API, data) and a decision for the maintainer.
+            - follow-up: real but not proven, or not introduced by this PR. It becomes a ticket after merge.
+            Leave out style and taste entirely.
+
+            Post each problem as an inline comment on the line it's about, starting with its kind in brackets and
+            its title in bold (for example "[blocker] **Organizer list is public**"), then what could happen and what
+            you'd change. Use the same title in the findings block below: the factory matches them to answer threads. Then post one summary comment
+            that starts with "Second opinion (security)", lists the problems or says plainly that you found none,
+            and ends with a fenced code block tagged `findings` holding a JSON array, one object per problem:
+            {"kind": "blocker" | "one-way-door" | "follow-up", "title": "<under 70 characters>", "path": "<file>",
+             "line": <line>, "body": "<what could happen and what you'd change>"}. Use [] when there are none.
+            Don't approve or request changes: the maintainer decides.
           claude_args: >-
             --model claude-sonnet-5-5 --max-turns 15
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
