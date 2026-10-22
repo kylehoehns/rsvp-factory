@@ -11,6 +11,11 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   pull_request_review:
     types: [submitted, dismissed]
+  # The second opinion's verdict can lower a PR to low (risk-policy.toml), so judge again once it has posted.
+  # workflow_run runs this file from main, never from the PR.
+  workflow_run:
+    workflows: [second-review]
+    types: [completed]
 
 permissions:
   contents: read
@@ -19,26 +24,26 @@ permissions:
   statuses: write
 
 concurrency:
-  group: risk-gate-${{ github.event.pull_request.number }}
+  group: risk-gate-${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number }}
   # Let a superseded run finish: a cancelled run shows up on the PR as a red, failed risk-gate check.
   cancel-in-progress: false
 
 jobs:
   risk-gate:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.pull_requests[0] != null
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Check out the base branch's policy and script (never the PR)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
           sparse-checkout: .github
           persist-credentials: false
 
       - name: Decide the tier
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number }}
           RISK_GATE_MODE: ${{ vars.RISK_GATE_MODE || 'shadow' }}
-          FACTORY_BOT: ${{ vars.FACTORY_BOT }}
         run: python3 .github/scripts/risk_gate.py

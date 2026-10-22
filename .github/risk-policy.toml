@@ -11,6 +11,8 @@
 # Paths are fnmatch globs where "*" also matches "/".
 
 maintainers = ["kylehoehns"]
+# The factory's GitHub App. Its PRs are trusted like the maintainer's.
+factory_bot = "rsvp-factory-bot[bot]"
 
 [low]
 # Every changed file must match one of these, and none of the exclusions, and the PR must be small.
@@ -20,6 +22,12 @@ max_changed_lines = 100
 # A PR that only adds tests is low at any size: it changes no production code, so it can only add
 # coverage. Editing or deleting a test line is not "only adds" and stays medium.
 test_paths = ["app/src/test/*", "acceptance/src/test/*"]
+# A PR is also low when the independent second opinion passed its head commit (it matches the ticket and
+# CODING_STANDARDS.md, with no blocker or one-way door) and it changes little production code. Tests don't
+# count toward the limit. A later commit the second opinion hasn't read loses the pass until it runs again.
+# High paths, edits to existing acceptance scenarios, outside authors and one-way doors still raise the tier.
+reviewed_production_paths = ["app/src/main/*"]
+reviewed_max_production_lines = 200
 
 [high]
 # The identity module, schema changes, and the factory's own controls.
