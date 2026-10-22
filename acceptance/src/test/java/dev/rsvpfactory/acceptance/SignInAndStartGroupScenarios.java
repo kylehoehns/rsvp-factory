@@ -75,4 +75,18 @@ class SignInAndStartGroupScenarios extends AcceptanceScenario {
     void aGroupThatDoesNotExistIsRefusedAsNotFound() {
         Api.assertRefused(api.get(null, "/groups/999999"), HttpStatus.NOT_FOUND, "group-not-found");
     }
+
+    @Test
+    void aGroupStartedWithoutADescriptionHasAnEmptyOne() {
+        api.post("dave", "/groups", Map.of("name", "Quiet group"))
+                .expectStatus()
+                .isCreated()
+                .expectBody()
+                .jsonPath("$.name")
+                .isEqualTo("Quiet group")
+                .jsonPath("$.description")
+                .isEqualTo("")
+                .jsonPath("$.organizers[0].name")
+                .isEqualTo("Dave");
+    }
 }
