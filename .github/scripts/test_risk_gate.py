@@ -69,8 +69,32 @@ class RiskTierTests(unittest.TestCase):
             True,
             "",
         )
-        self.assertEqual("medium", decision.tier)
         self.assertFalse(any("acceptance suite" in reason for reason in decision.reasons))
+
+    def test_a_pr_that_only_adds_tests_is_low_at_any_size(self):
+        self.assertEqual(
+            "low",
+            tier(
+                added("acceptance/src/test/java/dev/rsvpfactory/acceptance/RsvpLimitScenarios.java", 400),
+                modified("app/src/test/java/dev/rsvpfactory/rsvp/RsvpApiTests.java", 9),
+            ),
+        )
+
+    def test_editing_or_deleting_a_test_line_is_not_only_adding_tests(self):
+        edited = ChangedFile("app/src/test/java/dev/rsvpfactory/rsvp/RsvpApiTests.java", "modified", 2, deletions=1)
+        removed = ChangedFile("app/src/test/java/dev/rsvpfactory/rsvp/RsvpApiTests.java", "removed", 30, deletions=30)
+        for change in [edited, removed]:
+            with self.subTest(status=change.status):
+                self.assertEqual("medium", tier(change))
+
+    def test_tests_with_production_code_are_not_only_tests(self):
+        self.assertEqual(
+            "medium",
+            tier(
+                added("app/src/test/java/dev/rsvpfactory/rsvp/RsvpApiTests.java"),
+                modified("app/src/main/java/dev/rsvpfactory/rsvp/RsvpService.java", 1),
+            ),
+        )
 
     def test_changing_or_deleting_an_existing_scenario_is_flagged(self):
         for status in ["modified", "removed"]:

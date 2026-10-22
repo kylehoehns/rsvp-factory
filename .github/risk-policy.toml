@@ -17,6 +17,9 @@ maintainers = ["kylehoehns"]
 paths = ["docs/*", "*.md"]
 exclude = ["AGENTS.md", "CLAUDE.md", "GLOSSARY.md", "docs/adr/*", "docs/agents/*", ".agents/*"]
 max_changed_lines = 100
+# A PR that only adds tests is low at any size: it changes no production code, so it can only add
+# coverage. Editing or deleting a test line is not "only adds" and stays medium.
+test_paths = ["app/src/test/*", "acceptance/src/test/*"]
 
 [high]
 # The identity module, schema changes, and the factory's own controls.
