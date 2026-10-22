@@ -5,6 +5,9 @@ The factory turns GitHub issues labelled `ready-for-agent` into reviewed pull re
 ```text
 cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctrl+C)
   │
+  update     for each open factory PR that conflicts with main (another PR merged first): a session merges
+             main in, resolves the conflict, renumbers its own migrations if they collide; at most
+             maxUpdateRounds, then agent:blocked
   fix CI     for each open factory PR whose `ci` check failed on its latest commit: a fix session in a
              sandbox on that branch, given the failed steps' log; pushes the fix and comments
              "CI round N of maxCiRounds". After the last round it labels the PR agent:blocked.
