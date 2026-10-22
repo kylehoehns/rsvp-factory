@@ -47,9 +47,10 @@ def matches(path: str, patterns: list[str]) -> bool:
 
 
 def floor_tier(
-    files: list[ChangedFile], policy: dict, author: str, author_is_trusted: bool, body: str
+    files: list[ChangedFile], policy: dict, author: str, author_is_trusted: bool, body: str, reviewed: bool = False
 ) -> Decision:
-    """The deterministic part of the tier: paths, size, author and the PR's own Merge Danger."""
+    """The deterministic part of the tier: paths, size, author, the PR's own Merge Danger, and whether the
+    independent second opinion passed the head commit (`reviewed`)."""
     decision = Decision()
     low = policy["low"]
     paths = [p for f in files for p in (f.path, f.previous_path) if p]
@@ -66,7 +67,9 @@ def floor_tier(
         matches(f.path, low["test_paths"]) and not f.previous_path and f.status != "removed" and f.deletions == 0
         for f in files
     )
-    if not only_adds_tests:
+    production_lines = sum(f.changes for f in files if matches(f.path, low["reviewed_production_paths"]))
+    reviewed_and_small = reviewed and production_lines <= low["reviewed_max_production_lines"]
+    if not (only_adds_tests or reviewed_and_small):
         outside_low = [p for p in paths if not matches(p, low["paths"]) or matches(p, low["exclude"])]
         if outside_low:
             decision.raise_to("medium", f"{len(outside_low)} file(s) outside the low-risk paths, e.g. {outside_low[0]}")
@@ -82,7 +85,12 @@ def floor_tier(
         decision.raise_to("medium", "the PR's Merge Danger says one-way door")
 
     if not decision.reasons:
-        decision.reasons.append("low: only adds tests" if only_adds_tests else "low: small change to low-risk paths only")
+        if only_adds_tests:
+            decision.reasons.append("low: only adds tests")
+        elif reviewed_and_small:
+            decision.reasons.append(f"low: the second opinion passed it and it changes {production_lines} production lines")
+        else:
+            decision.reasons.append("low: small change to low-risk paths only")
     return decision
 
 
@@ -116,6 +124,14 @@ def changed_files(pr_number: int) -> list[ChangedFile]:
         if len(batch) < 100:  # type: ignore[arg-type]
             return files
         page += 1
+
+
+def second_opinion_passed(head_sha: str) -> bool:
+    """The second-review workflow passed this exact commit. Its status is pinned to the commit it read, and only
+    a workflow run (github-actions[bot]) can have posted it."""
+    statuses = api("GET", f"/commits/{head_sha}/statuses?per_page=100")
+    latest = next((s for s in statuses if s["context"] == "second-opinion"), None)  # type: ignore[union-attr]
+    return bool(latest) and latest["state"] == "success" and latest["creator"]["login"] == "github-actions[bot]"
 
 
 def set_tier_label(pr_number: int, tier: str, current: list[str]) -> None:
@@ -168,8 +184,9 @@ def main() -> int:
 
     pr = api("GET", f"/pulls/{pr_number}")
     author = pr["user"]["login"]  # type: ignore[index]
-    trusted = author in policy["maintainers"] or author == os.environ.get("FACTORY_BOT", "")
-    decision = floor_tier(changed_files(pr_number), policy, author, trusted, pr["body"] or "")  # type: ignore[index]
+    trusted = author in policy["maintainers"] or author == policy["factory_bot"]
+    reviewed = second_opinion_passed(pr["head"]["sha"])  # type: ignore[index]
+    decision = floor_tier(changed_files(pr_number), policy, author, trusted, pr["body"] or "", reviewed)  # type: ignore[index]
 
     set_tier_label(pr_number, decision.tier, [label["name"] for label in pr["labels"]])  # type: ignore[index]
 

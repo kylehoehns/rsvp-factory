@@ -6,7 +6,7 @@
 
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { gh, push, reviewThreads, settleThread } from "./github.ts";
+import { gh, push, requestSecondOpinion, reviewThreads, settleThread } from "./github.ts";
 import { runSessions } from "./sandbox.ts";
 import { config, repoRoot, run, RUNS } from "./shared.ts";
 
@@ -136,8 +136,7 @@ export async function triageSecondOpinion(token: string, pr: number, branch: str
   const replies = new Map(resolutions.map((r) => [r.title, r.status === "fixed" ? `**Fixed in \`${head}\`:** ${r.note}` : `**Not changed:** ${r.note}`]));
   await settleFindings(fresh, pr, blockers.filter((b) => replies.has(b.title)), replies);
   // Ask for a fresh second opinion on the fixed code.
-  gh(fresh, "pr", "edit", String(pr), "--remove-label", "claude-review");
-  gh(fresh, "pr", "edit", String(pr), "--add-label", "claude-review");
+  requestSecondOpinion(fresh, pr);
   console.log(`PR #${pr}: pushed review fix round ${round}`);
 }
 

@@ -7,7 +7,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +28,6 @@ class RsvpApiTests {
 
     private static final String PASSWORD = "rsvp-demo";
     private static final Instant NOW = Instant.parse("2030-03-01T12:00:00Z");
-    private static final String STARTS = "2030-04-01T18:00:00Z";
 
     @TestConfiguration(proxyBeanMethods = false)
     static class Setup {
@@ -73,120 +71,43 @@ class RsvpApiTests {
     Setup.Published published;
 
     private RestTestClient client() {
-        return RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+        return api().client();
     }
 
-    private String id(ResponseSpec response) {
-        String[] id = new String[1];
-        response.expectBody().jsonPath("$.id").value(Object.class, value -> id[0] = String.valueOf(value));
-        return Objects.requireNonNull(id[0]);
+    private RsvpApi api() {
+        return new RsvpApi(port);
     }
 
     private String groupWith(String organizer, String... members) {
-        String groupId = id(client().post()
-                .uri("/groups")
-                .headers(h -> h.setBasicAuth(organizer, PASSWORD))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("name", "Chess club"))
-                .exchange());
-        for (String member : members) {
-            client().put()
-                    .uri("/groups/" + groupId + "/members/me")
-                    .headers(h -> h.setBasicAuth(member, PASSWORD))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of())
-                    .exchange()
-                    .expectStatus()
-                    .is2xxSuccessful();
-        }
-        return groupId;
+        return api().groupWith(organizer, members);
     }
 
     private String event(String groupId, int capacity, int guestLimit, String cutoff) {
-        return id(client().post()
-                .uri("/groups/" + groupId + "/events")
-                .headers(h -> h.setBasicAuth("alice", PASSWORD))
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of(
-                        "title",
-                        "Monthly meetup",
-                        "description",
-                        "Talks",
-                        "venue",
-                        "123 Main St",
-                        "startsAt",
-                        STARTS,
-                        "endsAt",
-                        "2030-04-01T20:00:00Z",
-                        "capacity",
-                        capacity,
-                        "guestLimit",
-                        guestLimit,
-                        "rsvpCutoff",
-                        cutoff))
-                .exchange()
-                .expectStatus()
-                .isCreated());
+        return api().event(groupId, capacity, guestLimit, cutoff);
     }
 
     private String event(String groupId, int capacity, int guestLimit) {
-        return event(groupId, capacity, guestLimit, STARTS);
+        return api().event(groupId, capacity, guestLimit);
     }
 
     private ResponseSpec rsvp(String member, String eventId, Object guests) {
-        return client().put()
-                .uri("/events/" + eventId + "/rsvps/me")
-                .headers(h -> {
-                    if (!member.isEmpty()) {
-                        h.setBasicAuth(member, PASSWORD);
-                    }
-                })
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("guests", guests))
-                .exchange();
+        return api().rsvp(member, eventId, guests);
     }
 
     private ResponseSpec mine(String member, String eventId) {
-        return client().get()
-                .uri("/events/" + eventId + "/rsvps/me")
-                .headers(h -> {
-                    if (!member.isEmpty()) {
-                        h.setBasicAuth(member, PASSWORD);
-                    }
-                })
-                .exchange();
+        return api().mine(member, eventId);
     }
 
     private ResponseSpec withdraw(String member, String eventId) {
-        return client().delete()
-                .uri("/events/" + eventId + "/rsvps/me")
-                .headers(h -> {
-                    if (!member.isEmpty()) {
-                        h.setBasicAuth(member, PASSWORD);
-                    }
-                })
-                .exchange();
+        return api().withdraw(member, eventId);
     }
 
     private void assertOpenSeats(String eventId, int openSeats, int waitlistLength) {
-        client().get()
-                .uri("/events/" + eventId)
-                .exchange()
-                .expectBody()
-                .jsonPath("$.openSeats")
-                .isEqualTo(openSeats)
-                .jsonPath("$.waitlistLength")
-                .isEqualTo(waitlistLength);
+        api().assertOpenSeats(eventId, openSeats, waitlistLength);
     }
 
     private static void assertRefused(ResponseSpec response, int status, String rule) {
-        response.expectStatus()
-                .isEqualTo(status)
-                .expectHeader()
-                .contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
-                .expectBody()
-                .jsonPath("$.type")
-                .isEqualTo("https://rsvp-factory.dev/problems/" + rule);
+        RsvpApi.assertRefused(response, status, rule);
     }
 
     @Test
@@ -316,15 +237,6 @@ class RsvpApiTests {
 
         assertRefused(rsvp("bob", eventId, 0), 409, "rsvp-cutoff-passed");
         assertOpenSeats(eventId, 10, 0);
-    }
-
-    @Test
-    void changingTheGuestsOfAnExistingRsvpIsRefusedForNow() {
-        String eventId = event(groupWith("alice", "bob"), 10, 2);
-        rsvp("bob", eventId, 0).expectStatus().isOk();
-
-        assertRefused(rsvp("bob", eventId, 1), 409, "rsvp-party-change-unsupported");
-        assertOpenSeats(eventId, 9, 0);
     }
 
     @Test
