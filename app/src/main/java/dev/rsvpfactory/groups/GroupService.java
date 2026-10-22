@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-class GroupService {
+class GroupService implements GroupAccess {
 
     private final GroupRepository groups;
     private final Members members;
@@ -34,5 +34,15 @@ class GroupService {
         List<Member> organizers =
                 List.copyOf(members.byIds(groups.organizerIds(id)).values());
         return new GroupView(group.id(), group.name(), group.description(), organizers);
+    }
+
+    @Override
+    public boolean exists(long groupId) {
+        return groups.find(groupId).isPresent();
+    }
+
+    @Override
+    public boolean isOrganizer(long groupId, long memberId) {
+        return groups.organizerIds(groupId).contains(memberId);
     }
 }

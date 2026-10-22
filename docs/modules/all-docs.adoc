@@ -13,3 +13,11 @@ include::module-identity.adoc[]
 plantuml::module-groups.puml[,,format=svg]
 include::module-groups.adoc[]
 
+== Events
+plantuml::module-events.puml[,,format=svg]
+include::module-events.adoc[]
+
+== Rsvp
+plantuml::module-rsvp.puml[,,format=svg]
+include::module-rsvp.adoc[]
+

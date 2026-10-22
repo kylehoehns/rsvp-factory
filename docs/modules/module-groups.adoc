@@ -2,6 +2,10 @@
 |===
 |Base package
 |`dev.rsvpfactory.groups`
+|Spring components
+|_Services_
+
+* `d.r.g.GroupAccess` (via `d.r.g.GroupService`)
 |Bean references
 |* `d.r.i.CurrentMember` (in Identity)
 * `d.r.i.Members` (in Identity)

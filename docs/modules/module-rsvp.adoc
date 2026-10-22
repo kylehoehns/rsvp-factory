@@ -1,0 +1,10 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`dev.rsvpfactory.rsvp`
+|Bean references
+|* `d.r.e.Events` (in Events)
+* `d.r.g.GroupAccess` (in Groups)
+|Events listened to
+|* `d.r.e.EventScheduled` 
+|===

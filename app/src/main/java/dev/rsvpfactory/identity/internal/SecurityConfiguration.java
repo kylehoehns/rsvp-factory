@@ -15,8 +15,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 /**
- * Sign-in is required by default. The public endpoints are the explicit list below: a visitor can view a group and ask
- * whether the application is healthy, nothing else.
+ * Sign-in is required by default. The public endpoints are the explicit list below: a visitor can view a group, its
+ * events and an event, and ask whether the application is healthy, nothing else.
  */
 @Configuration(proxyBeanMethods = false)
 class SecurityConfiguration {
@@ -26,6 +26,8 @@ class SecurityConfiguration {
             HttpSecurity http, @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver)
             throws Exception {
         return http.authorizeHttpRequests(requests -> requests.requestMatchers(HttpMethod.GET, "/groups/{groupId}")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/groups/{groupId}/events", "/events/{eventId}")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health")
                         .permitAll()
