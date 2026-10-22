@@ -20,7 +20,8 @@ permissions:
 
 concurrency:
   group: risk-gate-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # Let a superseded run finish: a cancelled run shows up on the PR as a red, failed risk-gate check.
+  cancel-in-progress: false
 
 jobs:
   risk-gate:
