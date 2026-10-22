@@ -69,7 +69,7 @@ jobs:
       TASK_FILE: /tmp/factory/in/task.md
       OUTCOME_FILE: /tmp/factory/out/outcome.json
       PR_BODY_FILE: /tmp/factory/out/pr-body.md
-      USAGE_LOG: /tmp/factory/out/usage.jsonl
+      USAGE_FILE: /tmp/factory/out/usage.json
       BUNDLE: /tmp/factory/out/work.bundle
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
