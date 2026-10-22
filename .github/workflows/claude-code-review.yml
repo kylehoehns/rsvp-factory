@@ -32,6 +32,9 @@ jobs:
         uses: anthropics/claude-code-action@a5a423f75c251dcbff8a74e99f83b2cb03c72bfa # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The factory app adds the label to its own high-tier PRs; the action refuses bot-started runs
+          # unless the bot is named here. Only our app, never '*'.
+          allowed_bots: rsvp-factory-bot
           prompt: |
             You are the independent second reviewer for pull request ${{ github.repository }}#${{ github.event.pull_request.number }}.
             It is in the high risk tier: it touches identity, the database schema, or the factory's own controls.
