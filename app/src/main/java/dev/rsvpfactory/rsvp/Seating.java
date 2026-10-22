@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpStatus;
 
 /**
  * The seating rules as a pure function: no Spring, no database, no clock of its own. Given an event's seating plan, its
@@ -84,16 +85,20 @@ final class Seating {
             if (existing.size() != party.size()) {
                 throw new SeatingRefusal(
                         "rsvp-party-change-unsupported",
+                        HttpStatus.CONFLICT,
                         "Changing the guests of an existing RSVP is not possible yet.");
             }
             return new Outcome(state, held != null ? Placement.CONFIRMED : Placement.WAITLISTED);
         }
         if (party.size() - 1 > plan.guestLimit()) {
             throw new SeatingRefusal(
-                    "guest-limit-exceeded", "This event allows at most " + plan.guestLimit() + " guests per RSVP.");
+                    "guest-limit-exceeded",
+                    HttpStatus.UNPROCESSABLE_CONTENT,
+                    "This event allows at most " + plan.guestLimit() + " guests per RSVP.");
         }
         if (!now.isBefore(plan.rsvpCutoff())) {
-            throw new SeatingRefusal("rsvp-cutoff-passed", "The RSVP cutoff for this event has passed.");
+            throw new SeatingRefusal(
+                    "rsvp-cutoff-passed", HttpStatus.CONFLICT, "The RSVP cutoff for this event has passed.");
         }
         if (party.size() <= state.openSeats(plan)) {
             List<Party> confirmed = new ArrayList<>(state.confirmed());
@@ -113,7 +118,7 @@ final class Seating {
      */
     static Withdrawal withdraw(SeatingPlan plan, State state, long memberId, Instant now) {
         if (state.confirmedParty(memberId) == null && state.waitlistedParty(memberId) == null) {
-            throw new SeatingRefusal("rsvp-not-found", "There is no RSVP to withdraw.");
+            throw new SeatingRefusal("rsvp-not-found", HttpStatus.NOT_FOUND, "There is no RSVP to withdraw.");
         }
         List<Party> confirmed = new ArrayList<>(state.confirmed());
         confirmed.removeIf(party -> party.memberId() == memberId);

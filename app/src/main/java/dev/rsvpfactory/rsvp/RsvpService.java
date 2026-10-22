@@ -52,7 +52,7 @@ class RsvpService {
         try {
             outcome = Seating.rsvp(plan, before, party, Instant.now(clock));
         } catch (SeatingRefusal refusal) {
-            throw new RuleBrokenException(refusal.rule(), statusOf(refusal), refusal.reason());
+            throw new RuleBrokenException(refusal.rule(), refusal.status(), refusal.reason());
         }
         int position = outcome.state().waitlistPosition(member.id());
         if (!outcome.state().equals(before)) {
@@ -111,12 +111,5 @@ class RsvpService {
             rsvps.confirm(eventId, promoted.memberId());
             publisher.publishEvent(new RsvpPromoted(eventId, promoted.memberId(), promoted.size()));
         }
-    }
-
-    private static HttpStatus statusOf(SeatingRefusal refusal) {
-        return switch (refusal.rule()) {
-            case "guest-limit-exceeded" -> HttpStatus.UNPROCESSABLE_CONTENT;
-            default -> HttpStatus.CONFLICT;
-        };
     }
 }
