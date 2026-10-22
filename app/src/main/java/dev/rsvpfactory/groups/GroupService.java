@@ -84,6 +84,11 @@ class GroupService implements GroupAccess {
     }
 
     @Override
+    public boolean isMember(long groupId, long memberId) {
+        return groups.isMember(groupId, memberId);
+    }
+
+    @Override
     public boolean isOrganizer(long groupId, long memberId) {
         return groups.organizerIds(groupId).contains(memberId);
     }
