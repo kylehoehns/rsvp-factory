@@ -83,6 +83,37 @@ class RsvpService {
         return RsvpView.of(outcome.placement(), party.size(), position);
     }
 
+    /** Sets the event's capacity for an organizer of its group and promotes from the waitlist into new seats. */
+    @Transactional
+    EventSeatsView changeCapacity(Member member, long eventId, int capacity) {
+        EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        if (!groups.isOrganizer(event.groupId(), member.id())) {
+            throw new RuleBrokenException(
+                    "not-an-organizer",
+                    HttpStatus.FORBIDDEN,
+                    "Only an organizer of the group can change its events' capacity.");
+        }
+        SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        Seating.State before = rsvps.state(eventId);
+        Seating.CapacityChange change;
+        try {
+            change = Seating.changeCapacity(plan, before, capacity, Instant.now(clock));
+        } catch (SeatingRefusal refusal) {
+            throw new RuleBrokenException(refusal.rule(), refusal.status(), refusal.reason());
+        }
+        plans.updateCapacity(eventId, capacity);
+        for (Party promoted : change.promoted()) {
+            rsvps.confirm(eventId, promoted.memberId());
+            publisher.publishEvent(new RsvpPromoted(eventId, promoted.memberId(), promoted.size()));
+        }
+        return EventSeatsView.of(
+                event,
+                change.plan(),
+                new RsvpRepository.Seats(
+                        change.state().confirmedSeats(),
+                        change.state().waitlist().size()));
+    }
+
     /** The member's own RSVP to the event. */
     @Transactional(readOnly = true)
     RsvpView mine(Member member, long eventId) {

@@ -28,6 +28,13 @@ class SeatingPlanRepository {
                 .update();
     }
 
+    void updateCapacity(long eventId, int capacity) {
+        jdbc.sql("UPDATE seating_plan SET capacity = :capacity WHERE event_id = :eventId")
+                .param("capacity", capacity)
+                .param("eventId", eventId)
+                .update();
+    }
+
     /** Takes the event's seating plan with a row lock, so RSVPs to one event are seated one at a time. */
     Optional<SeatingPlan> lock(long eventId) {
         return jdbc.sql(

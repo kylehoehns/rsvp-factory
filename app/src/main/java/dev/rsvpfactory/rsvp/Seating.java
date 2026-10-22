@@ -140,6 +140,38 @@ final class Seating {
         return new Withdrawal(new State(confirmed, waitlist), promoted);
     }
 
+    /** The plan and state after an organizer changes the capacity, and the parties the new seats promoted. */
+    record CapacityChange(SeatingPlan plan, State state, List<Party> promoted) {
+
+        CapacityChange {
+            promoted = List.copyOf(promoted);
+        }
+    }
+
+    /**
+     * An organizer raising or lowering the capacity. New seats go to the earliest waitlisted parties that fit,
+     * repeatedly, before the cutoff only.
+     *
+     * @throws SeatingRefusal when the capacity is not positive or is below the seats confirmed parties hold
+     */
+    static CapacityChange changeCapacity(SeatingPlan plan, State state, int capacity, Instant now) {
+        if (capacity < 1) {
+            throw new SeatingRefusal(
+                    "capacity-not-positive", HttpStatus.BAD_REQUEST, "Capacity must be a positive number of seats.");
+        }
+        if (capacity < state.confirmedSeats()) {
+            throw new SeatingRefusal(
+                    "capacity-below-confirmed-seats",
+                    HttpStatus.CONFLICT,
+                    "Confirmed parties hold " + state.confirmedSeats() + " seats; capacity cannot go below that.");
+        }
+        SeatingPlan changed = new SeatingPlan(capacity, plan.guestLimit(), plan.rsvpCutoff());
+        List<Party> confirmed = new ArrayList<>(state.confirmed());
+        List<Party> waitlist = new ArrayList<>(state.waitlist());
+        List<Party> promoted = promote(changed, confirmed, waitlist, now);
+        return new CapacityChange(changed, new State(confirmed, waitlist), promoted);
+    }
+
     private static Outcome changeGuests(SeatingPlan plan, State state, Party party, boolean confirmedNow, Instant now) {
         List<Party> confirmed = new ArrayList<>(state.confirmed());
         List<Party> waitlist = new ArrayList<>(state.waitlist());
