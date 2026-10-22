@@ -11,6 +11,8 @@ cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctr
   review     for each open factory PR with a new second opinion: blockers get a review-fix round (at most
              maxReviewRounds), then the second opinion runs again; one-way doors get decision-needed;
              follow-ups are listed on the PR. Each handled finding's thread gets a reply and is resolved.
+  auto-merge for each open low-risk factory PR that's green with nothing left open: in `shadow` mode a
+             "would auto-merge" comment, when `on` a squash merge (ADR 0006; a revert pauses it)
   follow-ups for each merged factory PR, its listed follow-ups are filed as needs-triage tickets
   │
   for each ready ticket (lowest number first, all blockers closed, under wipLimit)
@@ -65,6 +67,7 @@ The repo's hooks run inside the container with `RSVP_FACTORY=1`, so the factory'
 | `wipLimit` | Factory tickets in flight plus open factory PRs. At 3, the factory keeps building independent tickets (one at a time) while earlier PRs wait for the maintainer; a ticket whose blocker isn't merged still waits |
 | `implementModel`, `reviewModel` | Model per role |
 | `implementTimeoutMinutes`, `reviewTimeoutMinutes` | Hard stop per session |
+| `autoMerge` | `off`, `shadow` (comment only, the starting point) or `on` (merge qualifying low-risk PRs). See ADR 0006 for when to switch |
 | `githubAppId` | The factory app (public; the private key is in the keychain) |
 
 Session logs go to `.factory/runs/logs/` and stay on the machine (gitignored). Every agent session also appends its outcome, duration, commits and token totals to `.factory/runs/metrics.jsonl`; `python3 scripts/factory_metrics.py` combines that with the factory PRs on GitHub into [`metrics.md`](metrics.md): outcomes, rounds, time to merge, reverts, and each risk tier against what the maintainer did.
