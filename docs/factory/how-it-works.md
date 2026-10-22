@@ -58,7 +58,7 @@ The repo's hooks run inside the container with `RSVP_FACTORY=1`, so the factory'
 
 | Setting | Meaning |
 |---|---|
-| `wipLimit` | Tickets and open factory PRs at once (1: one PR waits for the maintainer before the next starts) |
+| `wipLimit` | Factory tickets in flight plus open factory PRs. At 3, the factory keeps building independent tickets (one at a time) while earlier PRs wait for the maintainer; a ticket whose blocker isn't merged still waits |
 | `implementModel`, `reviewModel` | Model per role |
 | `implementTimeoutMinutes`, `reviewTimeoutMinutes` | Hard stop per session |
 | `githubAppId` | The factory app (public; the private key is in the keychain) |

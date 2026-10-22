@@ -1,6 +1,6 @@
 {
   "githubAppId": 5419025,
-  "wipLimit": 1,
+  "wipLimit": 3,
   "pollSeconds": 60,
   "maxCiRounds": 2,
   "implementModel": "claude-sonnet-5-5",
