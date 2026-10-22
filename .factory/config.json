@@ -1,8 +1,12 @@
 {
   "githubAppId": 5419025,
   "wipLimit": 1,
+  "pollSeconds": 60,
+  "maxCiRounds": 2,
   "implementModel": "claude-sonnet-5-5",
   "reviewModel": "claude-sonnet-5-5",
+  "fixCiModel": "claude-sonnet-5-5",
   "implementTimeoutMinutes": 45,
-  "reviewTimeoutMinutes": 20
+  "reviewTimeoutMinutes": 20,
+  "fixCiTimeoutMinutes": 30
 }
