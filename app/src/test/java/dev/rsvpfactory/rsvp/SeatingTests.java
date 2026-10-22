@@ -81,12 +81,109 @@ class SeatingTests {
     }
 
     @Test
-    void rsvpingAgainWithAnotherPartyIsRefused() {
-        Seating.State state = new Seating.State(List.of(new Party(1, 3)), List.of());
+    void aConfirmedPartyGrowsIntoOpenSeats() {
+        Seating.State state = new Seating.State(List.of(new Party(1, 1), new Party(2, 2)), List.of());
 
-        assertThatThrownBy(() -> Seating.rsvp(plan(5, 2), state, new Party(1, 2), NOW))
+        Seating.Outcome outcome = Seating.rsvp(plan(5, 2), state, new Party(1, 3), NOW);
+
+        assertThat(outcome.placement()).isEqualTo(Placement.CONFIRMED);
+        assertThat(outcome.state().confirmed()).containsExactly(new Party(1, 3), new Party(2, 2));
+        assertThat(outcome.promoted()).isEmpty();
+    }
+
+    @Test
+    void aConfirmedPartyThatCannotGrowIsRefusedAndStaysAsItIs() {
+        Seating.State state = new Seating.State(List.of(new Party(1, 1), new Party(2, 3)), List.of());
+
+        assertThatThrownBy(() -> Seating.rsvp(plan(5, 2), state, new Party(1, 3), NOW))
                 .isInstanceOfSatisfying(
-                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("rsvp-party-change-unsupported"));
+                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("not-enough-open-seats"));
+    }
+
+    @Test
+    void aConfirmedPartyThatShrinksPromotesTheWaitlistIntoTheFreedSeats() {
+        Seating.State state = new Seating.State(
+                List.of(new Party(1, 4), new Party(2, 1)), List.of(new Party(3, 3), new Party(4, 1), new Party(5, 1)));
+
+        Seating.Outcome outcome = Seating.rsvp(plan(5, 3), state, new Party(1, 1), NOW);
+
+        assertThat(outcome.placement()).isEqualTo(Placement.CONFIRMED);
+        assertThat(outcome.promoted()).containsExactly(new Party(3, 3));
+        assertThat(outcome.state().confirmed()).containsExactly(new Party(1, 1), new Party(2, 1), new Party(3, 3));
+        assertThat(outcome.state().waitlist()).containsExactly(new Party(4, 1), new Party(5, 1));
+    }
+
+    @Test
+    void shrinkingSkipsPartiesThatDoNotFitAndKeepsTheirPlace() {
+        Seating.State state =
+                new Seating.State(List.of(new Party(1, 3), new Party(2, 2)), List.of(new Party(3, 3), new Party(4, 1)));
+
+        Seating.Outcome outcome = Seating.rsvp(plan(5, 2), state, new Party(1, 2), NOW);
+
+        assertThat(outcome.promoted()).containsExactly(new Party(4, 1));
+        assertThat(outcome.state().waitlist()).containsExactly(new Party(3, 3));
+    }
+
+    @Test
+    void aWaitlistedPartyKeepsItsPlaceInLineWhenItsGuestsChange() {
+        Seating.State state =
+                new Seating.State(List.of(new Party(1, 5)), List.of(new Party(2, 2), new Party(3, 2), new Party(4, 2)));
+
+        Seating.Outcome grown = Seating.rsvp(plan(5, 3), state, new Party(3, 4), NOW);
+        Seating.Outcome shrunk = Seating.rsvp(plan(5, 3), state, new Party(3, 1), NOW);
+
+        assertThat(grown.placement()).isEqualTo(Placement.WAITLISTED);
+        assertThat(grown.state().waitlist()).containsExactly(new Party(2, 2), new Party(3, 4), new Party(4, 2));
+        assertThat(shrunk.placement()).isEqualTo(Placement.WAITLISTED);
+        assertThat(shrunk.state().waitlist()).containsExactly(new Party(2, 2), new Party(3, 1), new Party(4, 2));
+        assertThat(shrunk.promoted()).isEmpty();
+    }
+
+    @Test
+    void aWaitlistedPartyThatShrinksIntoOpenSeatsIsPromoted() {
+        Seating.State state = new Seating.State(List.of(new Party(1, 3)), List.of(new Party(2, 3)));
+
+        Seating.Outcome outcome = Seating.rsvp(plan(5, 2), state, new Party(2, 2), NOW);
+
+        assertThat(outcome.placement()).isEqualTo(Placement.CONFIRMED);
+        assertThat(outcome.state().confirmed()).containsExactly(new Party(1, 3), new Party(2, 2));
+        assertThat(outcome.state().waitlist()).isEmpty();
+    }
+
+    @Test
+    void changingGuestsIsHeldToTheGuestLimit() {
+        Seating.State state = new Seating.State(List.of(new Party(1, 1)), List.of());
+
+        assertThatThrownBy(() -> Seating.rsvp(plan(10, 2), state, new Party(1, 4), NOW))
+                .isInstanceOfSatisfying(
+                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("guest-limit-exceeded"));
+    }
+
+    @Test
+    void addingGuestsStopsAtTheCutoffButRemovingThemDoesNot() {
+        Seating.State confirmed = new Seating.State(List.of(new Party(1, 2)), List.of());
+        Seating.State waitlisted = new Seating.State(List.of(new Party(9, 5)), List.of(new Party(2, 2)));
+
+        assertThatThrownBy(() -> Seating.rsvp(plan(10, 3), confirmed, new Party(1, 3), CUTOFF))
+                .isInstanceOfSatisfying(
+                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("rsvp-cutoff-passed"));
+        assertThatThrownBy(() -> Seating.rsvp(plan(5, 3), waitlisted, new Party(2, 3), CUTOFF))
+                .isInstanceOfSatisfying(
+                        SeatingRefusal.class, e -> assertThat(e.rule()).isEqualTo("rsvp-cutoff-passed"));
+        assertThat(Seating.rsvp(plan(10, 3), confirmed, new Party(1, 1), CUTOFF)
+                        .state()
+                        .confirmed())
+                .containsExactly(new Party(1, 1));
+    }
+
+    @Test
+    void removingGuestsAtTheCutoffPromotesNobody() {
+        Seating.State state = new Seating.State(List.of(new Party(1, 3)), List.of(new Party(2, 1)));
+
+        Seating.Outcome outcome = Seating.rsvp(plan(3, 2), state, new Party(1, 1), CUTOFF);
+
+        assertThat(outcome.promoted()).isEmpty();
+        assertThat(outcome.state().waitlist()).containsExactly(new Party(2, 1));
     }
 
     @Test

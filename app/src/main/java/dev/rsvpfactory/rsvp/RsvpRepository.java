@@ -50,6 +50,14 @@ class RsvpRepository {
                 .update();
     }
 
+    void changePartySize(long eventId, long memberId, int partySize) {
+        jdbc.sql("UPDATE rsvp SET party_size = :partySize WHERE event_id = :eventId AND member_id = :memberId")
+                .param("partySize", partySize)
+                .param("eventId", eventId)
+                .param("memberId", memberId)
+                .update();
+    }
+
     void delete(long eventId, long memberId) {
         jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId AND member_id = :memberId")
                 .param("eventId", eventId)

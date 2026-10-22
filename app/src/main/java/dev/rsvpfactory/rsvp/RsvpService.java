@@ -37,7 +37,10 @@ class RsvpService {
         this.clock = clock;
     }
 
-    /** Creates the member's RSVP for their party, or returns the one they already have for that party. */
+    /**
+     * Creates the member's RSVP for their party, or changes the guests of the one they already have, promoting from the
+     * waitlist into any seats that frees.
+     */
     @Transactional
     RsvpView rsvp(Member member, long eventId, int guests) {
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
@@ -56,11 +59,21 @@ class RsvpService {
         }
         int position = outcome.state().waitlistPosition(member.id());
         if (!outcome.state().equals(before)) {
-            rsvps.insert(eventId, party, outcome.placement());
-            publisher.publishEvent(
-                    outcome.placement() == Placement.CONFIRMED
-                            ? new RsvpConfirmed(eventId, member.id(), party.size())
-                            : new RsvpWaitlisted(eventId, member.id(), party.size(), position));
+            boolean changed = before.confirmed().stream().anyMatch(held -> held.memberId() == member.id())
+                    || before.waitlistPosition(member.id()) > 0;
+            if (changed) {
+                rsvps.changePartySize(eventId, member.id(), party.size());
+            } else {
+                rsvps.insert(eventId, party, outcome.placement());
+                publisher.publishEvent(
+                        outcome.placement() == Placement.CONFIRMED
+                                ? new RsvpConfirmed(eventId, member.id(), party.size())
+                                : new RsvpWaitlisted(eventId, member.id(), party.size(), position));
+            }
+            for (Party promoted : outcome.promoted()) {
+                rsvps.confirm(eventId, promoted.memberId());
+                publisher.publishEvent(new RsvpPromoted(eventId, promoted.memberId(), promoted.size()));
+            }
         }
         return RsvpView.of(outcome.placement(), party.size(), position);
     }
