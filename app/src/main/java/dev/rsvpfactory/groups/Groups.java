@@ -39,15 +39,16 @@ public class Groups {
 
     @Transactional(readOnly = true)
     public GroupView view(long id) {
-        GroupView group = jdbc.sql("SELECT name, description FROM community_group WHERE id = :id")
+        record Details(String name, String description) {}
+        Details details = jdbc.sql("SELECT name, description FROM community_group WHERE id = :id")
                 .param("id", id)
-                .query((rs, row) -> new GroupView(id, rs.getString("name"), rs.getString("description"), List.of()))
+                .query((rs, row) -> new Details(rs.getString("name"), rs.getString("description")))
                 .optional()
                 .orElseThrow(() -> new Refusal(HttpStatus.NOT_FOUND, "group-not-found", "There is no such group."));
         List<Long> organizerIds = jdbc.sql("SELECT member_id FROM group_membership WHERE group_id = :id AND organizer")
                 .param("id", id)
                 .query((rs, row) -> rs.getLong("member_id"))
                 .list();
-        return new GroupView(group.id(), group.name(), group.description(), members.findAll(organizerIds));
+        return new GroupView(id, details.name(), details.description(), members.findAll(organizerIds));
     }
 }

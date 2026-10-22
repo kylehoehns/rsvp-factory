@@ -30,6 +30,25 @@ class StartingAGroupScenarios extends AcceptanceScenario {
     }
 
     @Test
+    void aGroupStartedWithoutADescriptionHasAnEmptyOne() {
+        var created = api.post("dave", "/groups", Map.of("name", "Quiet group"));
+
+        created.expectStatus().isCreated().expectHeader().exists("Location");
+        String location = created.returnResult(String.class)
+                .getResponseHeaders()
+                .getLocation()
+                .getPath();
+        api.get(null, location)
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.description")
+                .isEqualTo("")
+                .jsonPath("$.organizers[0].name")
+                .isEqualTo("dave");
+    }
+
+    @Test
     void anyoneCanViewAGroupWithoutSigningIn() {
         String groupId = api.startGroup("bob");
 
