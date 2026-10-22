@@ -20,8 +20,7 @@ record EventSeatsView(
         int openSeats,
         int waitlistLength) {
 
-    /** Until members can RSVP, no seats are confirmed and nobody waits. */
-    static EventSeatsView of(EventDetails event, SeatingPlan plan) {
+    static EventSeatsView of(EventDetails event, SeatingPlan plan, RsvpRepository.Seats seats) {
         return new EventSeatsView(
                 event.id(),
                 event.groupId(),
@@ -34,7 +33,7 @@ record EventSeatsView(
                 plan.capacity(),
                 plan.guestLimit(),
                 plan.rsvpCutoff(),
-                plan.capacity(),
-                0);
+                plan.capacity() - seats.confirmedSeats(),
+                seats.waitlistLength());
     }
 }

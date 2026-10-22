@@ -28,6 +28,18 @@ class SeatingPlanRepository {
                 .update();
     }
 
+    /** Takes the event's seating plan with a row lock, so RSVPs to one event are seated one at a time. */
+    Optional<SeatingPlan> lock(long eventId) {
+        return jdbc.sql(
+                        "SELECT capacity, guest_limit, rsvp_cutoff FROM seating_plan WHERE event_id = :eventId FOR UPDATE")
+                .param("eventId", eventId)
+                .query((rs, row) -> new SeatingPlan(
+                        rs.getInt("capacity"),
+                        rs.getInt("guest_limit"),
+                        rs.getTimestamp("rsvp_cutoff").toInstant()))
+                .optional();
+    }
+
     Optional<SeatingPlan> find(long eventId) {
         return Optional.ofNullable(byEventIds(List.of(eventId)).get(eventId));
     }
