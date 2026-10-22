@@ -27,6 +27,8 @@ paths = [
     ".factory/*",
     ".agents/*",
     ".claude/*",
+    ".githooks/*",
+    "scripts/*",
     "build-logic/*",
     "gradle/*",
     "*.gradle.kts",
