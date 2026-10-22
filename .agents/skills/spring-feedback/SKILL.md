@@ -18,12 +18,12 @@ Formatting is applied for you after each edit. If `check` still reports format v
 
 ## Where a test goes
 
-A seam (see the `tdd` skill) maps to one of these test types. Pick the lowest one that can observe the behaviour.
+A seam (see the `tdd` skill) maps to one of these test types. Most of a ticket's tests live in `app/`, because that is where mutation testing can see them.
 
 - **Rule inside a module, no Spring** (capacity, waitlist order, cutoffs): a plain JUnit test, or a jqwik `@Property` when the rule should hold for every input ("confirmed attendees never exceed capacity"). Milliseconds.
-- **A module's API with persistence or events**: `@ApplicationModuleTest` with the Testcontainers Postgres from `TestcontainersConfiguration`. Assert published events with Modulith's `Scenario`. Seconds.
-- **HTTP contract**: a web slice with `MockMvcTester` or `RestTestClient`. Seconds.
-- **The whole system, as a client sees it**: a new scenario class in `acceptance/`, extending `AcceptanceScenario` and using `Api`. Every ticket adds at least one. Move time with the scenario's `clock`, never with sleeps.
+- **The HTTP API** (the usual seam for a ticket): a test in `app/src/test`, `@SpringBootTest(webEnvironment = RANDOM_PORT)` with `@Import(TestcontainersConfiguration.class)`, calling the endpoint with `RestTestClient` and asserting on status, JSON and problem `type`. One test per behaviour and per refusal the ticket lists. Seconds.
+- **A module's API with persistence or events**: `@ApplicationModuleTest` with the same Testcontainers Postgres. Assert published events with Modulith's `Scenario`.
+- **A user journey across the whole system**: one or two new scenario classes in `acceptance/`, extending `AcceptanceScenario` and using `Api` ("a member signs in, starts a group, someone else sees it"). Journeys, not every edge case: those belong in `app/`. Move time with the scenario's `clock`, never with sleeps.
 
 Time-dependent rules take a `java.time.Clock`; tests pass `Clock.fixed(...)` and never sleep.
 
@@ -31,4 +31,4 @@ Collaborators inside a module are real objects in tests. Fakes live at the edge 
 
 ## Checking the tests themselves
 
-`./gradlew :app:pitest -PpitTargets='dev.rsvpfactory.rsvp.*'` mutates the code and reruns the tests. The report is `app/build/reports/pitest/index.html`. A surviving mutant is a behaviour change no test noticed: add the assertion that kills it, at an existing seam.
+`./gradlew :app:pitest -PpitTargets='dev.rsvpfactory.rsvp.*'` mutates the code and reruns the tests in `app/`. CI does this for every class a PR changes and fails below the mutation threshold, so code with no tests in `app/` fails CI. The report is `app/build/reports/pitest/index.html`. A surviving mutant is a behaviour change no test noticed: add the assertion that kills it, at an existing seam.

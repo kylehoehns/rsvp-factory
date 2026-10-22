@@ -22,7 +22,7 @@ Updated as entries are added.
 **Open questions to answer by the end**
 - How much maintainer time does a merged agent PR actually cost?
 - How often does the risk classifier disagree with the maintainer?
-- Did the brakes catch real agent mistakes, or only planted ones?
+- Did the brakes catch real agent mistakes, or only planted ones? (First real catch: the second opinion on #22. First silent brake: mutation testing with no tests in `app/`.)
 - Feature flags as the release brake: if every agent-built feature ships behind a default-off flag, merging becomes a two-way door and "release" becomes a separate, reversible decision (per-member beta, then a metrics-gated percentage ramp with automatic rollback). Planned as spec #2, with monitoring and alerting.
 
 ---
@@ -39,3 +39,4 @@ Updated as entries are added.
 | 6 | [Giving the factory a way to ask](2026-10-21-06-giving-the-factory-a-way-to-ask.md) |
 | 7 | [The first factory runs (four attempts)](2026-10-21-07-the-first-factory-runs-four-attempts.md) |
 | 8 | [The first factory PR, and making review visible](2026-10-21-08-the-first-factory-pr-and-making-review-visible.md) |
+| 9 | [A second opinion, and a brake that was silently off](2026-10-21-09-a-second-opinion-and-a-silent-brake.md) |
