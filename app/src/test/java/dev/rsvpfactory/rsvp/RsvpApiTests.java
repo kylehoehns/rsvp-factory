@@ -313,6 +313,16 @@ class RsvpApiTests {
     }
 
     @Test
+    void eachMemberSeesTheirOwnRsvp() {
+        String eventId = event(groupWith("alice", "bob", "carol"), 10, 2);
+        rsvp("bob", eventId, 2).expectStatus().isOk();
+        rsvp("carol", eventId, 0).expectStatus().isOk();
+
+        mine("carol", eventId).expectBody().jsonPath("$.partySize").isEqualTo(1);
+        mine("bob", eventId).expectBody().jsonPath("$.partySize").isEqualTo(3);
+    }
+
+    @Test
     void aMemberWithoutAnRsvpHasNothingToShow() {
         String eventId = event(groupWith("alice", "bob"), 5, 0);
 
