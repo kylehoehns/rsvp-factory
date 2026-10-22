@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-class GroupService {
+class GroupService implements GroupAccess {
 
     private final GroupRepository groups;
     private final Members members;
@@ -75,8 +75,16 @@ class GroupService {
     }
 
     private GroupRepository.GroupRow requireGroup(long id) {
-        return groups.find(id)
-                .orElseThrow(() -> new RuleBrokenException(
-                        "group-not-found", HttpStatus.NOT_FOUND, "There is no group " + id + "."));
+        return groups.find(id).orElseThrow(() -> RuleBrokenException.notFound("group", id));
+    }
+
+    @Override
+    public boolean exists(long groupId) {
+        return groups.find(groupId).isPresent();
+    }
+
+    @Override
+    public boolean isOrganizer(long groupId, long memberId) {
+        return groups.organizerIds(groupId).contains(memberId);
     }
 }

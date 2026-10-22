@@ -1,0 +1,9 @@
+package dev.rsvpfactory.groups;
+
+/** What other modules may ask about a group. */
+public interface GroupAccess {
+
+    boolean exists(long groupId);
+
+    boolean isOrganizer(long groupId, long memberId);
+}
