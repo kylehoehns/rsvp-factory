@@ -1,3 +1,11 @@
 == RsvpFactoryApplication
 plantuml::components.puml[,,format=svg]
 
+== Identity
+plantuml::module-identity.puml[,,format=svg]
+include::module-identity.adoc[]
+
+== Groups
+plantuml::module-groups.puml[,,format=svg]
+include::module-groups.adoc[]
+
