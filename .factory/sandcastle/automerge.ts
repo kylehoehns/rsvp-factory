@@ -22,7 +22,7 @@ function stopRuleTripped(token: string): string | undefined {
 async function qualifies(token: string, pr: FactoryPr): Promise<string | undefined> {
   const labels = new Set(pr.labels.map((l) => l.name));
   if (!labels.has("risk:low")) return "not low tier";
-  for (const label of ["decision-needed", "agent:blocked", "claude-review"]) if (labels.has(label)) return `labelled ${label}`;
+  for (const label of ["decision-needed", "agent:blocked"]) if (labels.has(label)) return `labelled ${label}`;
   const ci = await ciResult(token, pr.headRefOid);
   if (!ci || ci.failed) return "ci not green";
   const { statuses } = await api<{ statuses: { context: string; state: string }[] }>(token, `/commits/${pr.headRefOid}/status`);

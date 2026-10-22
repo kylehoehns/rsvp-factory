@@ -28,8 +28,8 @@ cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctr
   review     a fresh Claude session in the same container: code-review skill, fixes, PR body
   publish    factory.ts refuses changes to the factory's own controls, pushes the branch, opens the
              PR as the factory app, and posts the reviewer's findings as a review on it
-  high tier  if the risk policy puts the PR in the high tier, it adds the claude-review label, which
-             starts the independent second opinion (.github/workflows/claude-code-review.yml)
+  2nd opinion  it adds the claude-review label to every PR, which starts the independent second opinion
+             (.github/workflows/claude-code-review.yml); its pass on the head commit can make a small PR low
   │
   ci + risk-gate on the PR; the maintainer approves; merging closes the ticket
 ```
