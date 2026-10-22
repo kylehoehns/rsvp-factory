@@ -1,0 +1,8 @@
+[%autowidth.stretch, cols="h,a"]
+|===
+|Base package
+|`dev.rsvpfactory.identity`
+|Spring components
+|* `d.r.i.Members` (via `d.r.i.internal.MemberAccounts`)
+* `d.r.i.CurrentMember` (via `d.r.i.internal.SecurityContextCurrentMember`)
+|===
