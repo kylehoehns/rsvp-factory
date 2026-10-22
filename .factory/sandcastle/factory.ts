@@ -14,7 +14,7 @@ import { claudeCode, createSandbox } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 import { execFileSync } from "node:child_process";
 import { createSign } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -92,10 +92,12 @@ function startPrivateDocker(issue: number): { network: string; host: string; sto
     // nothing left over from an earlier run
   }
   run("docker", ["network", "create", network]);
-  run("docker", ["run", "-d", "--privileged", "--name", host, "--network", network, "-e", "DOCKER_TLS_CERTDIR=", DIND_IMAGE]);
+  // Plain TCP is fine here: the daemon is only reachable on this run's private network.
+  run("docker", ["run", "-d", "--privileged", "--name", host, "--network", network, "-e", "DOCKER_TLS_CERTDIR=",
+    DIND_IMAGE, "--tls=false"]);
   for (let attempt = 0; ; attempt++) {
     try {
-      run("docker", ["exec", host, "docker", "info"]);
+      execFileSync("docker", ["exec", host, "docker", "info"], { stdio: "ignore" });
       return { network, host, stop };
     } catch (error) {
       if (attempt > 60) throw error;
@@ -124,12 +126,14 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
     await using sandbox = await createSandbox({
       branch,
       cwd: repoRoot,
-      copyToWorktree: [join(RUNS, "task.md")],
       sandbox: docker({
         imageName: IMAGE,
         network: privateDocker.network,
         mounts: [{ hostPath: gradleCache, sandboxPath: "/home/agent/.gradle" }],
         env: {
+          // Sandcastle 0.12.0's createSandbox() ignores claudeCode({ env }) (it starts the container with
+          // an empty agent env and sandbox.run() never adds it), so the token goes in the sandbox env.
+          CLAUDE_CODE_OAUTH_TOKEN: claudeToken,
           RSVP_FACTORY: "1",
           DOCKER_HOST: `tcp://${privateDocker.host}:2375`,
           TESTCONTAINERS_HOST_OVERRIDE: privateDocker.host,
@@ -137,13 +141,18 @@ async function buildTicket(issue: number, claudeToken: string): Promise<Outcome 
       }),
     });
 
+    // .factory/runs/ is gitignored, so a fresh worktree doesn't have it; the worktree is bind-mounted,
+    // so writing here on the host is what the agent sees.
+    mkdirSync(join(sandbox.worktreePath, RUNS), { recursive: true });
+    copyFileSync(join(repoRoot, RUNS, "task.md"), join(sandbox.worktreePath, RUNS, "task.md"));
+
     const promptArgs = {
       TASK_FILE: join(RUNS, "task.md"),
       OUTCOME_FILE: join(RUNS, "outcome.json"),
       PR_BODY_FILE: join(RUNS, "pr-body.md"),
       ISSUE: String(issue),
     };
-    const agent = (model: string) => claudeCode(model, { env: { CLAUDE_CODE_OAUTH_TOKEN: claudeToken } });
+    const agent = (model: string) => claudeCode(model);
 
     for (const role of ["implement", "review"] as const) {
       console.log(`#${issue}: ${role}…`);
@@ -205,6 +214,11 @@ function publish(token: string, issue: number, prBody: string | undefined) {
 // --- The shift ---
 
 const claudeToken = keychain("rsvp-factory-claude-token");
+// Fail before claiming a ticket: a wrong keychain item otherwise surfaces as "Not logged in" inside the sandbox.
+if (!/^sk-ant-[A-Za-z0-9_-]+$/.test(claudeToken)) {
+  throw new Error("The keychain item 'rsvp-factory-claude-token' doesn't look like a Claude token (sk-ant-...). " +
+    "Re-run .factory/sandcastle/setup-keychain.sh with the output of 'claude setup-token'.");
+}
 for (;;) {
   const token = await appToken(); // short-lived; mint a fresh one per ticket
   const issue = dispatch(token);
