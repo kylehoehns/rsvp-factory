@@ -1,0 +1,118 @@
+# The factory's reviewer: a fresh session reviews a factory PR with the code-review skill, commits
+# its fixes, rewrites the PR body and marks the PR ready for the maintainer.
+# Runs once per PR, when the factory labels it agent:review. Off unless FACTORY_ENABLED is "true".
+name: factory-review
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    if: >-
+      vars.FACTORY_ENABLED == 'true' &&
+      github.event.label.name == 'agent:review' &&
+      github.event.pull_request.user.type == 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'agent/issue-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      TASK_FILE: /tmp/factory/in/task.md
+      OUTCOME_FILE: /tmp/factory/out/outcome.json
+      PR_BODY_FILE: /tmp/factory/out/pr-body.md
+      USAGE_LOG: /tmp/factory/out/usage.jsonl
+      BUNDLE: /tmp/factory/out/work.bundle
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Prepare (the read-only token is used here, never in the agent step)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          npm install --global --silent @anthropic-ai/claude-code@2.1.307
+          mkdir -p "$(dirname "$TASK_FILE")" "$(dirname "$OUTCOME_FILE")"
+          issue=${HEAD_REF#agent/issue-}
+          echo "ISSUE=$issue" >>"$GITHUB_ENV"
+          python3 -c "import sys; sys.path.insert(0, '.factory'); import dispatch; dispatch.write_task($issue, '$TASK_FILE')"
+          gh pr view "$PR" --json body --jq .body >"$PR_BODY_FILE"
+          git config user.name "rsvp-factory reviewer"
+          git config user.email "factory@users.noreply.github.com"
+          git config core.hooksPath .githooks
+
+      - name: Review
+        timeout-minutes: 20
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: .factory/run-agent.sh review "$ISSUE"
+
+      - name: Bundle the reviewer's commits
+        if: always()
+        run: |
+          if [[ -n "$(git rev-list "origin/$HEAD_REF..HEAD")" ]]; then git bundle create "$BUNDLE" "origin/$HEAD_REF..HEAD"; fi
+
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: review-output
+          path: /tmp/factory/out
+          if-no-files-found: ignore
+
+  publish:
+    needs: review
+    if: always() && needs.review.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      PR: ${{ github.event.pull_request.number }}
+      OUTCOME_FILE: /tmp/factory/out/outcome.json
+      PR_BODY_FILE: /tmp/factory/out/pr-body.md
+      BUNDLE: /tmp/factory/out/work.bundle
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          name: review-output
+          path: /tmp/factory/out
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: .factory/publish.sh review "${HEAD_REF#agent/issue-}" "$PR"

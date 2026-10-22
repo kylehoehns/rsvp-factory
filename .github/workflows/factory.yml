@@ -1,0 +1,150 @@
+# The factory: pick the next ready ticket, have an agent build it, publish a draft PR.
+# See docs/factory/how-it-works.md. Off unless the repository variable FACTORY_ENABLED is "true".
+#
+# Three jobs, three levels of trust:
+#   dispatch  - deterministic script, factory app token (labels the ticket)
+#   implement - the agent; contents: read, no GitHub write token, a Claude credential
+#   publish   - deterministic script, factory app token; validates the agent's work, pushes, opens the PR
+name: factory
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: >-
+      vars.FACTORY_ENABLED == 'true' &&
+      (github.event_name != 'issues' || github.event.label.name == 'ready-for-agent') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.merged)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      issue: ${{ steps.pick.outputs.issue }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github
+            .factory
+          persist-credentials: false
+
+      - id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+
+      - id: pick
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
+          TASK_FILE: /tmp/factory/task.md
+        run: python3 .factory/dispatch.py >>"$GITHUB_OUTPUT"
+
+      - if: steps.pick.outputs.issue
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: task
+          path: /tmp/factory/task.md
+
+  implement:
+    needs: dispatch
+    if: needs.dispatch.outputs.issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    env:
+      ISSUE: ${{ needs.dispatch.outputs.issue }}
+      TASK_FILE: /tmp/factory/in/task.md
+      OUTCOME_FILE: /tmp/factory/out/outcome.json
+      PR_BODY_FILE: /tmp/factory/out/pr-body.md
+      USAGE_LOG: /tmp/factory/out/usage.jsonl
+      BUNDLE: /tmp/factory/out/work.bundle
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: task
+          path: /tmp/factory/in
+
+      - name: Prepare
+        run: |
+          npm install --global --silent @anthropic-ai/claude-code@2.1.307
+          mkdir -p "$(dirname "$OUTCOME_FILE")"
+          git config user.name "rsvp-factory implementer"
+          git config user.email "factory@users.noreply.github.com"
+          git config core.hooksPath .githooks
+          git checkout -b "agent/issue-$ISSUE"
+
+      - name: Implement
+        timeout-minutes: 45
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: .factory/run-agent.sh implement "$ISSUE"
+
+      - name: Bundle the agent's commits
+        if: always()
+        run: |
+          if [[ -n "$(git rev-list origin/main..HEAD)" ]]; then git bundle create "$BUNDLE" origin/main..HEAD; fi
+
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: implement-output
+          path: /tmp/factory/out
+          if-no-files-found: ignore
+
+  publish:
+    needs: [dispatch, implement]
+    if: always() && needs.dispatch.outputs.issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ISSUE: ${{ needs.dispatch.outputs.issue }}
+      OUTCOME_FILE: /tmp/factory/out/outcome.json
+      PR_BODY_FILE: /tmp/factory/out/pr-body.md
+      BUNDLE: /tmp/factory/out/work.bundle
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        continue-on-error: true
+        with:
+          name: implement-output
+          path: /tmp/factory/out
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: .factory/publish.sh implement "$ISSUE"

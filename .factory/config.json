@@ -1,0 +1,10 @@
+{
+  "runner": "claude-headless",
+  "wipLimit": 1,
+  "implementModel": "sonnet",
+  "reviewModel": "sonnet",
+  "implementMaxTurns": 200,
+  "reviewMaxTurns": 80,
+  "implementTimeoutMinutes": 45,
+  "reviewTimeoutMinutes": 20
+}
