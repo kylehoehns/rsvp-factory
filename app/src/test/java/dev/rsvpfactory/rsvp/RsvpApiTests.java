@@ -289,6 +289,15 @@ class RsvpApiTests {
     }
 
     @Test
+    void anRsvpAfterTheCutoffIsRefusedAndTakesNoSeats() {
+        String eventId =
+                event(groupWith("alice", "bob"), 10, 0, NOW.minusSeconds(3600).toString());
+
+        assertRefused(rsvp("bob", eventId, 0), 409, "rsvp-cutoff-passed");
+        assertOpenSeats(eventId, 10, 0);
+    }
+
+    @Test
     void changingTheGuestsOfAnExistingRsvpIsRefusedForNow() {
         String eventId = event(groupWith("alice", "bob"), 10, 2);
         rsvp("bob", eventId, 0).expectStatus().isOk();
