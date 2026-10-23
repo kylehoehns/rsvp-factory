@@ -4,6 +4,7 @@ import dev.rsvpfactory.problems.RuleBrokenException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 
@@ -34,26 +35,26 @@ final class Seating {
         }
 
         /** The member's place in line counting from 1, or 0 when they are not on the waitlist. */
-        int waitlistPosition(long memberId) {
+        int waitlistPosition(UUID memberId) {
             for (int i = 0; i < waitlist.size(); i++) {
-                if (waitlist.get(i).memberId() == memberId) {
+                if (waitlist.get(i).memberId().equals(memberId)) {
                     return i + 1;
                 }
             }
             return 0;
         }
 
-        private @Nullable Party confirmedParty(long memberId) {
+        private @Nullable Party confirmedParty(UUID memberId) {
             return find(confirmed, memberId);
         }
 
-        private @Nullable Party waitlistedParty(long memberId) {
+        private @Nullable Party waitlistedParty(UUID memberId) {
             return find(waitlist, memberId);
         }
 
-        private static @Nullable Party find(List<Party> parties, long memberId) {
+        private static @Nullable Party find(List<Party> parties, UUID memberId) {
             for (Party party : parties) {
-                if (party.memberId() == memberId) {
+                if (party.memberId().equals(memberId)) {
                     return party;
                 }
             }
@@ -128,14 +129,14 @@ final class Seating {
      *
      * @throws RuleBrokenException when the member has no RSVP
      */
-    static Withdrawal withdraw(SeatingPlan plan, State state, long memberId, Instant now) {
+    static Withdrawal withdraw(SeatingPlan plan, State state, UUID memberId, Instant now) {
         if (state.confirmedParty(memberId) == null && state.waitlistedParty(memberId) == null) {
             throw RuleBrokenException.rsvpNotFound();
         }
         List<Party> confirmed = new ArrayList<>(state.confirmed());
-        confirmed.removeIf(party -> party.memberId() == memberId);
+        confirmed.removeIf(party -> party.memberId().equals(memberId));
         List<Party> waitlist = new ArrayList<>(state.waitlist());
-        waitlist.removeIf(party -> party.memberId() == memberId);
+        waitlist.removeIf(party -> party.memberId().equals(memberId));
 
         List<Party> promoted = promote(plan, confirmed, waitlist, now);
         return new Withdrawal(new State(confirmed, waitlist), promoted);
@@ -220,9 +221,9 @@ final class Seating {
         return promoted;
     }
 
-    private static int indexOf(List<Party> parties, long memberId) {
+    private static int indexOf(List<Party> parties, UUID memberId) {
         for (int i = 0; i < parties.size(); i++) {
-            if (parties.get(i).memberId() == memberId) {
+            if (parties.get(i).memberId().equals(memberId)) {
                 return i;
             }
         }

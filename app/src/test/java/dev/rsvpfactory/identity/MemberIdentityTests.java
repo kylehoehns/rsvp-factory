@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.rsvpfactory.TestcontainersConfiguration;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,14 +21,36 @@ class MemberIdentityTests {
 
     @Test
     void aMemberInsertedWithoutAnIdGetsOneThatDoesNotCollideWithTheDemoMembers() {
-        long id = jdbc.sql("INSERT INTO member (username, password_hash) VALUES ('erin', '{noop}x') RETURNING id")
-                .query(Long.class)
+        UUID id = jdbc.sql("INSERT INTO member (username, password_hash) VALUES ('erin', '{noop}x') RETURNING id")
+                .query(UUID.class)
                 .single();
 
-        List<Long> demoIds = jdbc.sql("SELECT id FROM member WHERE username IN ('alice', 'bob', 'carol', 'dave')")
-                .query(Long.class)
+        List<UUID> demoIds = jdbc.sql("SELECT id FROM member WHERE username IN ('alice', 'bob', 'carol', 'dave')")
+                .query(UUID.class)
                 .list();
         assertThat(demoIds).hasSize(4).doesNotContain(id);
+    }
+
+    @Test
+    void aMemberInsertedWithoutAnIdGetsAUuidV7() {
+        UUID id = jdbc.sql("INSERT INTO member (username, password_hash) VALUES ('gina', '{noop}x') RETURNING id")
+                .query(UUID.class)
+                .single();
+
+        assertThat(id.version()).isEqualTo(7);
+    }
+
+    @Test
+    void theDemoMembersHaveFixedIds() {
+        assertThat(jdbc.sql(
+                                "SELECT id FROM member WHERE username IN ('alice', 'bob', 'carol', 'dave') ORDER BY username")
+                        .query(UUID.class)
+                        .list())
+                .containsExactly(
+                        UUID.fromString("0197a000-0000-7000-8000-000000000001"),
+                        UUID.fromString("0197a000-0000-7000-8000-000000000002"),
+                        UUID.fromString("0197a000-0000-7000-8000-000000000003"),
+                        UUID.fromString("0197a000-0000-7000-8000-000000000004"));
     }
 
     @Test

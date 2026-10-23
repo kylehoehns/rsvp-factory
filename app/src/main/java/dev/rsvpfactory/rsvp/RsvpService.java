@@ -8,6 +8,7 @@ import dev.rsvpfactory.identity.Member;
 import dev.rsvpfactory.problems.RuleBrokenException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -64,8 +65,9 @@ class RsvpService {
         }
         int position = outcome.state().waitlistPosition(member.id());
         if (!outcome.state().equals(before)) {
-            boolean changed = before.confirmed().stream().anyMatch(held -> held.memberId() == member.id())
-                    || before.waitlistPosition(member.id()) > 0;
+            boolean changed =
+                    before.confirmed().stream().anyMatch(held -> held.memberId().equals(member.id()))
+                            || before.waitlistPosition(member.id()) > 0;
             if (changed) {
                 rsvps.changePartySize(eventId, member.id(), party.size());
             } else {
@@ -124,7 +126,7 @@ class RsvpService {
                     Placement.WAITLISTED, state.waitlist().get(position - 1).size(), position);
         }
         return state.confirmed().stream()
-                .filter(party -> party.memberId() == member.id())
+                .filter(party -> party.memberId().equals(member.id()))
                 .findFirst()
                 .map(party -> RsvpView.of(Placement.CONFIRMED, party.size(), 0))
                 .orElseThrow(RuleBrokenException::rsvpNotFound);
@@ -145,7 +147,7 @@ class RsvpService {
      * Withdraws the member's RSVPs to the group's events that haven't started, with promotion as for any withdrawal.
      */
     @Transactional
-    void withdrawUpcoming(long groupId, long memberId) {
+    void withdrawUpcoming(long groupId, UUID memberId) {
         Instant now = Instant.now(clock);
         for (EventDetails event : events.inGroup(groupId)) {
             if (event.status() == EventStatus.SCHEDULED && event.startsAt().isAfter(now)) {
@@ -154,7 +156,7 @@ class RsvpService {
         }
     }
 
-    private boolean withdrawIfPresent(long memberId, long eventId) {
+    private boolean withdrawIfPresent(UUID memberId, long eventId) {
         SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         Seating.State before = rsvps.state(eventId);
         Seating.Withdrawal withdrawal;
@@ -164,10 +166,10 @@ class RsvpService {
             return false;
         }
         Party withdrawn = before.confirmed().stream()
-                .filter(party -> party.memberId() == memberId)
+                .filter(party -> party.memberId().equals(memberId))
                 .findFirst()
                 .orElseGet(() -> before.waitlist().stream()
-                        .filter(party -> party.memberId() == memberId)
+                        .filter(party -> party.memberId().equals(memberId))
                         .findFirst()
                         .orElseThrow());
         rsvps.delete(eventId, memberId);

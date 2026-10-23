@@ -1,5 +1,5 @@
 package dev.rsvpfactory.groups;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
-record MakeOrganizerRequest(@NotNull Long memberId) {}
+record MakeOrganizerRequest(@NotBlank String memberId) {}

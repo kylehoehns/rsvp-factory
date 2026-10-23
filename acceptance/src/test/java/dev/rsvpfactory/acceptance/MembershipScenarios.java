@@ -32,15 +32,15 @@ class MembershipScenarios extends AcceptanceScenario {
         String groupId = api.groupWith("alice", "bob", "carol");
 
         Api.assertRefused(
-                api.post("bob", "/groups/" + groupId + "/organizers", Map.of("memberId", 3)),
+                api.post("bob", "/groups/" + groupId + "/organizers", Map.of("memberId", api.memberId("carol"))),
                 HttpStatus.FORBIDDEN,
                 "not-an-organizer");
         Api.assertRefused(
-                api.post("alice", "/groups/" + groupId + "/organizers", Map.of("memberId", 4)),
+                api.post("alice", "/groups/" + groupId + "/organizers", Map.of("memberId", api.memberId("dave"))),
                 HttpStatus.UNPROCESSABLE_CONTENT,
                 "not-a-member");
 
-        api.post("alice", "/groups/" + groupId + "/organizers", Map.of("memberId", 2))
+        api.post("alice", "/groups/" + groupId + "/organizers", Map.of("memberId", api.memberId("bob")))
                 .expectStatus()
                 .isOk();
         api.get(null, "/groups/" + groupId)
