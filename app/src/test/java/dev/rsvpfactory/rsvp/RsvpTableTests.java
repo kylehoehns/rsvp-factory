@@ -49,7 +49,7 @@ class RsvpTableTests {
     @Test
     void theDatabaseRefusesAnUnknownStatus() {
         assertThatThrownBy(() -> jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status, created_at)"
-                                + " VALUES (1, 1, 1, 'maybe', now())")
+                                + " VALUES (1, '0197a000-0000-7000-8000-000000000001', 1, 'maybe', now())")
                         .update())
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -57,7 +57,7 @@ class RsvpTableTests {
     @Test
     void theDatabaseRefusesAnRsvpWithoutATime() {
         assertThatThrownBy(() -> jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status)"
-                                + " VALUES (1, 1, 1, 'confirmed')")
+                                + " VALUES (1, '0197a000-0000-7000-8000-000000000001', 1, 'confirmed')")
                         .update())
                 .isInstanceOf(DataIntegrityViolationException.class);
     }

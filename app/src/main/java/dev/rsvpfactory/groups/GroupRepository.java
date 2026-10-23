@@ -2,6 +2,7 @@ package dev.rsvpfactory.groups;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -24,7 +25,7 @@ class GroupRepository {
                 .single();
     }
 
-    void addMember(long groupId, long memberId, boolean organizer) {
+    void addMember(long groupId, UUID memberId, boolean organizer) {
         jdbc.sql("INSERT INTO group_membership (group_id, member_id, organizer)"
                         + " VALUES (:groupId, :memberId, :organizer)")
                 .param("groupId", groupId)
@@ -40,10 +41,10 @@ class GroupRepository {
                 .optional();
     }
 
-    List<Long> organizerIds(long groupId) {
+    List<UUID> organizerIds(long groupId) {
         return jdbc.sql("SELECT member_id FROM group_membership WHERE group_id = :groupId AND organizer")
                 .param("groupId", groupId)
-                .query((rs, row) -> rs.getLong("member_id"))
+                .query((rs, row) -> rs.getObject("member_id", UUID.class))
                 .list();
     }
 
@@ -55,7 +56,7 @@ class GroupRepository {
     }
 
     /** Adds the member as a non-organizer; does nothing if they already belong. */
-    void join(long groupId, long memberId) {
+    void join(long groupId, UUID memberId) {
         jdbc.sql("INSERT INTO group_membership (group_id, member_id, organizer)"
                         + " VALUES (:groupId, :memberId, FALSE) ON CONFLICT DO NOTHING")
                 .param("groupId", groupId)
@@ -64,7 +65,7 @@ class GroupRepository {
     }
 
     /** Removes the member; true if they belonged. */
-    boolean leave(long groupId, long memberId) {
+    boolean leave(long groupId, UUID memberId) {
         return jdbc.sql("DELETE FROM group_membership WHERE group_id = :groupId AND member_id = :memberId")
                         .param("groupId", groupId)
                         .param("memberId", memberId)
@@ -72,22 +73,22 @@ class GroupRepository {
                 > 0;
     }
 
-    boolean isMember(long groupId, long memberId) {
+    boolean isMember(long groupId, UUID memberId) {
         return exists(groupId, memberId, "");
     }
 
-    boolean isOrganizer(long groupId, long memberId) {
+    boolean isOrganizer(long groupId, UUID memberId) {
         return exists(groupId, memberId, " AND organizer");
     }
 
-    void makeOrganizer(long groupId, long memberId) {
+    void makeOrganizer(long groupId, UUID memberId) {
         jdbc.sql("UPDATE group_membership SET organizer = TRUE WHERE group_id = :groupId AND member_id = :memberId")
                 .param("groupId", groupId)
                 .param("memberId", memberId)
                 .update();
     }
 
-    private boolean exists(long groupId, long memberId, String extraCondition) {
+    private boolean exists(long groupId, UUID memberId, String extraCondition) {
         return jdbc.sql("SELECT EXISTS (SELECT 1 FROM group_membership"
                         + " WHERE group_id = :groupId AND member_id = :memberId" + extraCondition + ")")
                 .param("groupId", groupId)

@@ -106,6 +106,17 @@ final class Api {
         return get(null, "/events/" + eventId);
     }
 
+    /** The id of a seeded demo member, as the API shows it on the group they started. */
+    String memberId(String member) {
+        String groupId = startGroup(member);
+        String[] holder = new String[1];
+        get(null, "/groups/" + groupId)
+                .expectBody()
+                .jsonPath("$.organizers[0].id")
+                .value(String.class, id -> holder[0] = id);
+        return Objects.requireNonNull(holder[0], "group had no organizer id");
+    }
+
     /** A group started by {@code organizer} that every other listed member has joined. */
     String groupWith(String organizer, String... members) {
         String groupId = startGroup(organizer);

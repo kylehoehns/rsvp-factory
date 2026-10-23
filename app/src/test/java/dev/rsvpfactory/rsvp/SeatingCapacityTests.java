@@ -1,5 +1,6 @@
 package dev.rsvpfactory.rsvp;
 
+import static dev.rsvpfactory.rsvp.MemberIds.member;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -25,20 +26,22 @@ class SeatingCapacityTests {
 
     @Test
     void raisingTheCapacityPromotesTheEarliestWaitlistedPartiesThatFit() {
-        Seating.State state =
-                new Seating.State(List.of(new Party(1, 2)), List.of(new Party(2, 3), new Party(3, 1), new Party(4, 1)));
+        Seating.State state = new Seating.State(
+                List.of(new Party(member(1), 2)),
+                List.of(new Party(member(2), 3), new Party(member(3), 1), new Party(member(4), 1)));
 
         Seating.CapacityChange change = Seating.changeCapacity(plan(2, 2), state, 4, NOW);
 
         assertThat(change.plan().capacity()).isEqualTo(4);
-        assertThat(change.promoted()).containsExactly(new Party(3, 1), new Party(4, 1));
-        assertThat(change.state().confirmed()).containsExactly(new Party(1, 2), new Party(3, 1), new Party(4, 1));
-        assertThat(change.state().waitlist()).containsExactly(new Party(2, 3));
+        assertThat(change.promoted()).containsExactly(new Party(member(3), 1), new Party(member(4), 1));
+        assertThat(change.state().confirmed())
+                .containsExactly(new Party(member(1), 2), new Party(member(3), 1), new Party(member(4), 1));
+        assertThat(change.state().waitlist()).containsExactly(new Party(member(2), 3));
     }
 
     @Test
     void raisingTheCapacityAtOrAfterTheCutoffPromotesNobody() {
-        Seating.State state = new Seating.State(List.of(new Party(1, 1)), List.of(new Party(2, 1)));
+        Seating.State state = new Seating.State(List.of(new Party(member(1), 1)), List.of(new Party(member(2), 1)));
 
         Seating.CapacityChange change = Seating.changeCapacity(plan(1, 0), state, 5, CUTOFF);
 
@@ -49,7 +52,8 @@ class SeatingCapacityTests {
 
     @Test
     void loweringTheCapacityToTheConfirmedSeatsIsAllowed() {
-        Seating.State state = new Seating.State(List.of(new Party(1, 2), new Party(2, 1)), List.of(new Party(3, 1)));
+        Seating.State state = new Seating.State(
+                List.of(new Party(member(1), 2), new Party(member(2), 1)), List.of(new Party(member(3), 1)));
 
         Seating.CapacityChange change = Seating.changeCapacity(plan(5, 2), state, 3, NOW);
 
@@ -60,7 +64,7 @@ class SeatingCapacityTests {
 
     @Test
     void loweringTheCapacityBelowTheConfirmedSeatsIsRefused() {
-        Seating.State state = new Seating.State(List.of(new Party(1, 2), new Party(2, 1)), List.of());
+        Seating.State state = new Seating.State(List.of(new Party(member(1), 2), new Party(member(2), 1)), List.of());
 
         assertThatThrownBy(() -> Seating.changeCapacity(plan(5, 2), state, 2, NOW))
                 .isInstanceOfSatisfying(
@@ -85,7 +89,7 @@ class SeatingCapacityTests {
             @ForAll("plans") SeatingPlan plan, @ForAll("guestCounts") List<Integer> guests, @ForAll int shortfall) {
         Seating.State state = Seating.State.EMPTY;
         for (int i = 0; i < guests.size(); i++) {
-            state = Seating.rsvp(plan, state, new Party(i, 1 + Math.min(guests.get(i), plan.guestLimit())), NOW)
+            state = Seating.rsvp(plan, state, new Party(member(i), 1 + Math.min(guests.get(i), plan.guestLimit())), NOW)
                     .state();
         }
         int seats = state.confirmedSeats();
@@ -105,7 +109,7 @@ class SeatingCapacityTests {
             @ForAll("plans") SeatingPlan plan, @ForAll("guestCounts") List<Integer> guests, @ForAll int extra) {
         Seating.State state = Seating.State.EMPTY;
         for (int i = 0; i < guests.size(); i++) {
-            state = Seating.rsvp(plan, state, new Party(i, 1 + Math.min(guests.get(i), plan.guestLimit())), NOW)
+            state = Seating.rsvp(plan, state, new Party(member(i), 1 + Math.min(guests.get(i), plan.guestLimit())), NOW)
                     .state();
         }
 

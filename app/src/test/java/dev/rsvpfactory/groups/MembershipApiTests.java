@@ -6,6 +6,7 @@ import dev.rsvpfactory.TestcontainersConfiguration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +25,8 @@ class MembershipApiTests {
 
     private static final String PASSWORD = "rsvp-demo";
     // Seeded by R__demo_members.sql; ids are looked up from the group view where possible.
-    private static final long BOB = 2;
+    private static final String BOB = "0197a000-0000-7000-8000-000000000002";
+    private static final String CAROL = "0197a000-0000-7000-8000-000000000003";
 
     @Value("${local.server.port}")
     int port;
@@ -135,7 +137,8 @@ class MembershipApiTests {
         leave("bob", groupId).expectStatus().isNoContent();
 
         view(groupId).expectBody().jsonPath("$.memberCount").isEqualTo(1);
-        assertThat(leftGroup.seen.stream()).containsExactly(new MemberLeftGroup(Long.parseLong(groupId), BOB));
+        assertThat(leftGroup.seen.stream())
+                .containsExactly(new MemberLeftGroup(Long.parseLong(groupId), UUID.fromString(BOB)));
     }
 
     @Test
@@ -168,7 +171,7 @@ class MembershipApiTests {
 
         // The new organizer can now do the same.
         join("carol", groupId);
-        makeOrganizer("bob", groupId, Map.of("memberId", 3)).expectStatus().isOk();
+        makeOrganizer("bob", groupId, Map.of("memberId", CAROL)).expectStatus().isOk();
         view(groupId).expectBody().jsonPath("$.organizers.length()").isEqualTo(3);
     }
 
@@ -191,8 +194,19 @@ class MembershipApiTests {
         String groupId = startGroup("alice");
 
         assertProblem(makeOrganizer("alice", groupId, Map.of("memberId", BOB)), 422, "not-a-member");
-        assertProblem(makeOrganizer("alice", groupId, Map.of("memberId", 999999)), 422, "not-a-member");
+        assertProblem(
+                makeOrganizer("alice", groupId, Map.of("memberId", "0197a000-0000-7000-8000-0000000fffff")),
+                422,
+                "not-a-member");
         view(groupId).expectBody().jsonPath("$.organizers.length()").isEqualTo(1);
+    }
+
+    @Test
+    void aMalformedMemberIdIsRefusedLikeAnUnknownMember() {
+        String groupId = startGroup("alice");
+
+        assertProblem(makeOrganizer("alice", groupId, Map.of("memberId", "bob")), 422, "not-a-member");
+        assertProblem(makeOrganizer("alice", groupId, Map.of("memberId", 2)), 422, "not-a-member");
     }
 
     @Test
@@ -201,7 +215,7 @@ class MembershipApiTests {
         join("bob", groupId);
         join("carol", groupId);
 
-        assertProblem(makeOrganizer("bob", groupId, Map.of("memberId", 3)), 403, "not-an-organizer");
+        assertProblem(makeOrganizer("bob", groupId, Map.of("memberId", CAROL)), 403, "not-an-organizer");
         view(groupId).expectBody().jsonPath("$.organizers.length()").isEqualTo(1);
     }
 

@@ -5,6 +5,7 @@ import dev.rsvpfactory.identity.Members;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -26,20 +27,21 @@ class MemberAccounts implements UserDetailsService, Members {
         return jdbc.sql("SELECT id, username, password_hash FROM member WHERE username = :username")
                 .param("username", username)
                 .query((rs, row) -> (UserDetails) new SignedInMember(
-                        new Member(rs.getLong("id"), rs.getString("username")), rs.getString("password_hash")))
+                        new Member(rs.getObject("id", UUID.class), rs.getString("username")),
+                        rs.getString("password_hash")))
                 .optional()
                 .orElseThrow(() -> new UsernameNotFoundException("No member " + username));
     }
 
     @Override
-    public Map<Long, Member> byIds(Collection<Long> ids) {
-        Map<Long, Member> members = new LinkedHashMap<>();
+    public Map<UUID, Member> byIds(Collection<UUID> ids) {
+        Map<UUID, Member> members = new LinkedHashMap<>();
         if (ids.isEmpty()) {
             return members;
         }
         jdbc.sql("SELECT id, username FROM member WHERE id IN (:ids) ORDER BY username")
                 .param("ids", ids)
-                .query((rs, row) -> new Member(rs.getLong("id"), rs.getString("username")))
+                .query((rs, row) -> new Member(rs.getObject("id", UUID.class), rs.getString("username")))
                 .list()
                 .forEach(member -> members.put(member.id(), member));
         return members;

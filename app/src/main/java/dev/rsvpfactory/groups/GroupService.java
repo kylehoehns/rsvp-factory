@@ -4,6 +4,8 @@ import dev.rsvpfactory.identity.Member;
 import dev.rsvpfactory.identity.Members;
 import dev.rsvpfactory.problems.RuleBrokenException;
 import java.util.List;
+import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -49,19 +51,29 @@ class GroupService implements GroupAccess {
 
     /** Makes an existing member of the group an organizer; only an organizer may. */
     @Transactional
-    GroupView makeOrganizer(Member by, long id, long memberId) {
+    GroupView makeOrganizer(Member by, long id, String memberId) {
         requireGroup(id);
         if (!groups.isOrganizer(id, by.id())) {
             throw RuleBrokenException.notAnOrganizer("make another member an organizer");
         }
-        if (!groups.isMember(id, memberId)) {
+        UUID organizerId = parse(memberId);
+        if (organizerId == null || !groups.isMember(id, organizerId)) {
             throw new RuleBrokenException(
                     "not-a-member",
                     HttpStatus.UNPROCESSABLE_CONTENT,
                     "Only a member of the group can become an organizer.");
         }
-        groups.makeOrganizer(id, memberId);
+        groups.makeOrganizer(id, organizerId);
         return view(id);
+    }
+
+    /** A malformed member id names nobody, like an unknown one. */
+    private static @Nullable UUID parse(String memberId) {
+        try {
+            return UUID.fromString(memberId);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     GroupView view(long id) {
@@ -81,12 +93,12 @@ class GroupService implements GroupAccess {
     }
 
     @Override
-    public boolean isMember(long groupId, long memberId) {
+    public boolean isMember(long groupId, UUID memberId) {
         return groups.isMember(groupId, memberId);
     }
 
     @Override
-    public boolean isOrganizer(long groupId, long memberId) {
+    public boolean isOrganizer(long groupId, UUID memberId) {
         return groups.organizerIds(groupId).contains(memberId);
     }
 }

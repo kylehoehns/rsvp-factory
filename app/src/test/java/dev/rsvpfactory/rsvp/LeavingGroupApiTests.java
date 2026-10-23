@@ -10,6 +10,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
@@ -195,7 +196,8 @@ class LeavingGroupApiTests {
         mine("carol", second).expectBody().jsonPath("$.status").isEqualTo("confirmed");
         assertThat(published.events)
                 .contains(
-                        new RsvpWithdrawn(Long.parseLong(first), 2, 2), new RsvpPromoted(Long.parseLong(first), 4, 1));
+                        new RsvpWithdrawn(Long.parseLong(first), demoMember(2), 2),
+                        new RsvpPromoted(Long.parseLong(first), demoMember(4), 1));
     }
 
     @Test
@@ -225,5 +227,10 @@ class LeavingGroupApiTests {
         leave("bob", groupId);
 
         mine("bob", other).expectStatus().isOk();
+    }
+
+    /** The seeded demo member with this number: 1 alice, 2 bob, 3 carol, 4 dave. */
+    private static UUID demoMember(int number) {
+        return UUID.fromString("0197a000-0000-7000-8000-00000000000" + number);
     }
 }

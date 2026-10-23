@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -34,7 +35,7 @@ class RsvpRepository {
         jdbc.sql("SELECT member_id, party_size, status FROM rsvp WHERE event_id = :eventId ORDER BY created_at, id")
                 .param("eventId", eventId)
                 .query((rs, row) -> {
-                    Party party = new Party(rs.getLong("member_id"), rs.getInt("party_size"));
+                    Party party = new Party(rs.getObject("member_id", UUID.class), rs.getInt("party_size"));
                     (Placement.CONFIRMED.name().equalsIgnoreCase(rs.getString("status")) ? confirmed : waitlist)
                             .add(party);
                     return party;
@@ -54,7 +55,7 @@ class RsvpRepository {
                 .update();
     }
 
-    void changePartySize(long eventId, long memberId, int partySize) {
+    void changePartySize(long eventId, UUID memberId, int partySize) {
         jdbc.sql("UPDATE rsvp SET party_size = :partySize WHERE event_id = :eventId AND member_id = :memberId")
                 .param("partySize", partySize)
                 .param("eventId", eventId)
@@ -69,14 +70,14 @@ class RsvpRepository {
                 .update();
     }
 
-    void delete(long eventId, long memberId) {
+    void delete(long eventId, UUID memberId) {
         jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId AND member_id = :memberId")
                 .param("eventId", eventId)
                 .param("memberId", memberId)
                 .update();
     }
 
-    void confirm(long eventId, long memberId) {
+    void confirm(long eventId, UUID memberId) {
         jdbc.sql("UPDATE rsvp SET status = :status WHERE event_id = :eventId AND member_id = :memberId")
                 .param("status", Placement.CONFIRMED.name().toLowerCase(Locale.ROOT))
                 .param("eventId", eventId)
