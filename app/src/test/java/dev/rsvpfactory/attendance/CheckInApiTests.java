@@ -257,10 +257,7 @@ class CheckInApiTests {
         assertRefused(get("alice", "/events/nope/attendance"), 404, "event-not-found");
     }
 
-    private ResponseSpec attendance(String member) {
-        return get(member, "/events/" + eventId + "/attendance");
-    }
-
+    @Test
     void undoingACheckInRemovesIt() {
         clock.set(STARTS);
         checkIn("alice", bobId, 2).expectStatus().isOk();
@@ -324,6 +321,10 @@ class CheckInApiTests {
                 .exchange()
                 .expectStatus()
                 .isUnauthorized();
+    }
+
+    private ResponseSpec attendance(String member) {
+        return get(member, "/events/" + eventId + "/attendance");
     }
 
     private ResponseSpec undo(String member, String memberId) {
