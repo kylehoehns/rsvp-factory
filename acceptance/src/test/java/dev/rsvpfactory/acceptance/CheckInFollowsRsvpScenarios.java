@@ -20,7 +20,12 @@ class CheckInFollowsRsvpScenarios extends AcceptanceScenario {
         api.put("alice", "/events/" + eventId + "/check-ins/" + bobId, Map.of())
                 .expectStatus()
                 .isOk();
-        api.get("bob", "/events/" + eventId + "/check-ins/me").expectStatus().isOk();
+        api.get("bob", "/events/" + eventId + "/check-ins/me")
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.arrived")
+                .isEqualTo(3);
 
         api.withdraw("bob", eventId).expectStatus().isNoContent();
 
