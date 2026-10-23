@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -42,6 +43,18 @@ class RsvpRepository {
                 })
                 .list();
         return new Seating.State(confirmed, waitlist);
+    }
+
+    /** The party size of the member's confirmed RSVP, or empty if it is waitlisted or there is none. */
+    OptionalInt confirmedPartySize(UUID eventId, UUID memberId) {
+        return jdbc.sql("SELECT party_size FROM rsvp"
+                        + " WHERE event_id = :eventId AND member_id = :memberId AND status = 'confirmed'")
+                .param("eventId", eventId)
+                .param("memberId", memberId)
+                .query((rs, row) -> rs.getInt("party_size"))
+                .optional()
+                .map(OptionalInt::of)
+                .orElseGet(OptionalInt::empty);
     }
 
     void insert(UUID eventId, Party party, Placement placement, Instant createdAt) {
