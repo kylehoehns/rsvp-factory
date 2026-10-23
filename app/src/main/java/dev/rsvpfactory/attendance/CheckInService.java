@@ -10,6 +10,9 @@ import dev.rsvpfactory.rsvp.Rsvps;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
@@ -63,6 +66,26 @@ class CheckInService {
             throw unprocessable("arrived-exceeds-party", "More people arrived than the party of " + party + ".");
         }
         return checkIns.save(eventId, memberId, count, now);
+    }
+
+    /** Every confirmed party of the event with its check-in, if any, and the totals. Organizers only, at any time. */
+    @Transactional(readOnly = true)
+    AttendanceView attendance(Member organizer, UUID eventId) {
+        EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        if (!groups.isOrganizer(event.groupId(), organizer.id())) {
+            throw RuleBrokenException.notAnOrganizer("see attendance");
+        }
+        Map<UUID, Integer> arrivals = checkIns.arrivals(eventId);
+        List<AttendanceView.Party> parties = rsvps.confirmedParties(eventId).stream()
+                .map(party -> new AttendanceView.Party(party.memberId(), party.size(), arrivals.get(party.memberId())))
+                .toList();
+        int seats = parties.stream().mapToInt(AttendanceView.Party::partySize).sum();
+        int arrived = parties.stream()
+                .map(AttendanceView.Party::arrived)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum();
+        return new AttendanceView(parties, seats, arrived);
     }
 
     /** The member's own check-in at the event. */

@@ -3,6 +3,8 @@ package dev.rsvpfactory.attendance;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -39,6 +41,16 @@ class CheckInRepository {
                 .param("memberId", memberId)
                 .query(CheckInRepository::view)
                 .optional();
+    }
+
+    /** The arrival count of each checked-in member of the event. */
+    Map<UUID, Integer> arrivals(UUID eventId) {
+        Map<UUID, Integer> arrivals = new HashMap<>();
+        jdbc.sql("SELECT member_id, arrived FROM check_in WHERE event_id = :eventId")
+                .param("eventId", eventId)
+                .query((rs, row) -> arrivals.put(rs.getObject("member_id", UUID.class), rs.getInt("arrived")))
+                .list();
+        return arrivals;
     }
 
     private static CheckInView view(java.sql.ResultSet rs, int row) throws java.sql.SQLException {

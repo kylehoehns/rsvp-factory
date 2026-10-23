@@ -202,6 +202,65 @@ class CheckInApiTests {
                 .isUnauthorized();
     }
 
+    @Test
+    void attendanceListsEveryConfirmedPartyWithTotals() {
+        put("carol", "/events/" + eventId + "/rsvps/me", Map.of("guests", 0))
+                .expectStatus()
+                .isOk();
+        clock.set(STARTS);
+        checkIn("alice", bobId, 2).expectStatus().isOk();
+
+        attendance("alice")
+                .expectStatus()
+                .isOk()
+                .expectBody()
+                .jsonPath("$.parties.length()")
+                .isEqualTo(1)
+                .jsonPath("$.parties[0].memberId")
+                .isEqualTo(bobId)
+                .jsonPath("$.parties[0].partySize")
+                .isEqualTo(3)
+                .jsonPath("$.parties[0].arrived")
+                .isEqualTo(2)
+                .jsonPath("$.seatsConfirmed")
+                .isEqualTo(3)
+                .jsonPath("$.peopleCheckedIn")
+                .isEqualTo(2);
+    }
+
+    @Test
+    void attendanceShowsPartiesNotCheckedInYetAndStaysAvailableAfterCheckInCloses() {
+        attendance("alice")
+                .expectBody()
+                .jsonPath("$.parties[0].memberId")
+                .isEqualTo(bobId)
+                .jsonPath("$.parties[0].arrived")
+                .isEmpty()
+                .jsonPath("$.seatsConfirmed")
+                .isEqualTo(3)
+                .jsonPath("$.peopleCheckedIn")
+                .isEqualTo(0);
+        clock.set(ENDS.plus(Duration.ofDays(1)));
+        attendance("alice").expectStatus().isOk();
+    }
+
+    @Test
+    void attendanceIsRefusedToNonOrganizersAndSignedOutVisitors() {
+        assertRefused(attendance("bob"), 403, "not-an-organizer");
+        assertRefused(attendance("carol"), 403, "not-an-organizer");
+        assertRefused(attendance(null), 401, "not-authenticated");
+    }
+
+    @Test
+    void attendanceOfAnUnknownEventIsNotFound() {
+        assertRefused(get("alice", "/events/" + UNKNOWN + "/attendance"), 404, "event-not-found");
+        assertRefused(get("alice", "/events/nope/attendance"), 404, "event-not-found");
+    }
+
+    private ResponseSpec attendance(String member) {
+        return get(member, "/events/" + eventId + "/attendance");
+    }
+
     private Map<String, Object> event(int guestLimit) {
         Map<String, Object> json = new LinkedHashMap<>();
         json.put("title", "Monthly meetup");

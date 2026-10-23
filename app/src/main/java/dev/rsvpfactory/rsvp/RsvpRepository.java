@@ -57,6 +57,15 @@ class RsvpRepository {
                 .orElseGet(OptionalInt::empty);
     }
 
+    /** The event's confirmed parties in the order they RSVPed. */
+    List<ConfirmedParty> confirmedParties(UUID eventId) {
+        return jdbc.sql("SELECT member_id, party_size FROM rsvp"
+                        + " WHERE event_id = :eventId AND status = 'confirmed' ORDER BY created_at, id")
+                .param("eventId", eventId)
+                .query((rs, row) -> new ConfirmedParty(rs.getObject("member_id", UUID.class), rs.getInt("party_size")))
+                .list();
+    }
+
     void insert(UUID eventId, Party party, Placement placement, Instant createdAt) {
         jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status, created_at)"
                         + " VALUES (:eventId, :memberId, :partySize, :status, :createdAt)")

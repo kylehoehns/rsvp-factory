@@ -33,6 +33,11 @@ class CheckInController {
                 request.map(CheckInRequest::arrived).orElse(null));
     }
 
+    @GetMapping("/events/{eventId}/attendance")
+    AttendanceView attendance(@PathVariable String eventId) {
+        return checkIns.attendance(currentMember.get(), parse("event", eventId));
+    }
+
     @GetMapping("/events/{eventId}/check-ins/me")
     CheckInView mine(@PathVariable String eventId) {
         return checkIns.mine(currentMember.get(), parse("event", eventId));
