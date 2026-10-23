@@ -14,6 +14,7 @@ class GroupIdScenarios extends AcceptanceScenario {
         String groupId = api.startGroup("alice");
 
         assertThat(UUID.fromString(groupId)).hasToString(groupId);
+        assertThat(UUID.fromString(groupId).version()).isEqualTo(7);
         api.get(null, "/groups/" + groupId).expectStatus().isOk();
         api.get(null, "/groups/" + groupId + "/events").expectStatus().isOk();
     }
