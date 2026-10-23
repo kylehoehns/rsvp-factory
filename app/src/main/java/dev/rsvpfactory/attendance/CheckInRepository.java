@@ -53,6 +53,15 @@ class CheckInRepository {
         return arrivals;
     }
 
+    /** Removes the check-in; false if there was none. */
+    boolean delete(UUID eventId, UUID memberId) {
+        return jdbc.sql("DELETE FROM check_in WHERE event_id = :eventId AND member_id = :memberId")
+                        .param("eventId", eventId)
+                        .param("memberId", memberId)
+                        .update()
+                > 0;
+    }
+
     private static CheckInView view(java.sql.ResultSet rs, int row) throws java.sql.SQLException {
         return new CheckInView(
                 rs.getObject("member_id", UUID.class),

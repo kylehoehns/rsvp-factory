@@ -43,21 +43,12 @@ class CheckInService {
     @Transactional
     CheckInView checkIn(Member organizer, UUID eventId, UUID memberId, @Nullable Integer arrived) {
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
-        if (!groups.isOrganizer(event.groupId(), organizer.id())) {
-            throw RuleBrokenException.notAnOrganizer("check members in");
-        }
+        requireOrganizer(organizer, event, "check members in");
         if (arrived != null && arrived < 1) {
             throw unprocessable("arrived-must-be-positive", "At least one person must arrive.");
         }
         Instant now = Instant.now(clock);
-        if (event.status() == EventStatus.CANCELLED
-                || now.isBefore(event.startsAt().minus(OPENS_BEFORE_START))
-                || !now.isBefore(event.endsAt())) {
-            throw unprocessable(
-                    "check-in-closed",
-                    "Check-in is open from an hour before the event starts until it ends, and never for a cancelled"
-                            + " event.");
-        }
+        requireOpen(event, now);
         int party = rsvps.confirmedPartySize(eventId, memberId)
                 .orElseThrow(() ->
                         unprocessable("rsvp-not-confirmed", "Only a member with a confirmed RSVP can be checked in."));
@@ -86,6 +77,34 @@ class CheckInService {
                 .mapToInt(Integer::intValue)
                 .sum();
         return new AttendanceView(parties, seats, arrived);
+    }
+
+    /** Removes the member's check-in while check-in is open. */
+    @Transactional
+    void undo(Member organizer, UUID eventId, UUID memberId) {
+        EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
+        requireOrganizer(organizer, event, "undo check-ins");
+        requireOpen(event, Instant.now(clock));
+        if (!checkIns.delete(eventId, memberId)) {
+            throw RuleBrokenException.notFound("check-in", eventId);
+        }
+    }
+
+    private void requireOrganizer(Member organizer, EventDetails event, String action) {
+        if (!groups.isOrganizer(event.groupId(), organizer.id())) {
+            throw RuleBrokenException.notAnOrganizer(action);
+        }
+    }
+
+    private static void requireOpen(EventDetails event, Instant now) {
+        if (event.status() == EventStatus.CANCELLED
+                || now.isBefore(event.startsAt().minus(OPENS_BEFORE_START))
+                || !now.isBefore(event.endsAt())) {
+            throw unprocessable(
+                    "check-in-closed",
+                    "Check-in is open from an hour before the event starts until it ends, and never for a cancelled"
+                            + " event.");
+        }
     }
 
     /** The member's own check-in at the event. */

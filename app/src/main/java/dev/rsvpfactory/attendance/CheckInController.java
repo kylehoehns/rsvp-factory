@@ -4,6 +4,8 @@ import dev.rsvpfactory.identity.CurrentMember;
 import dev.rsvpfactory.problems.RuleBrokenException;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -36,6 +38,12 @@ class CheckInController {
     @GetMapping("/events/{eventId}/attendance")
     AttendanceView attendance(@PathVariable String eventId) {
         return checkIns.attendance(currentMember.get(), parse("event", eventId));
+    }
+
+    @DeleteMapping("/events/{eventId}/check-ins/{memberId}")
+    ResponseEntity<Void> undo(@PathVariable String eventId, @PathVariable String memberId) {
+        checkIns.undo(currentMember.get(), parse("event", eventId), parse("member", memberId));
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/events/{eventId}/check-ins/me")
