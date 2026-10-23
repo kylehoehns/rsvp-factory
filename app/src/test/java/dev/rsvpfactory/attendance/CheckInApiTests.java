@@ -203,6 +203,47 @@ class CheckInApiTests {
     }
 
     @Test
+    void withdrawingRemovesTheCheckIn() {
+        clock.set(STARTS.minus(Duration.ofMinutes(30)));
+        checkIn("alice", bobId, null).expectStatus().isOk();
+        delete("bob", "/events/" + eventId + "/rsvps/me").expectStatus().is2xxSuccessful();
+        assertRefused(mine("bob"), 404, "check-in-not-found");
+    }
+
+    @Test
+    void shrinkingThePartyCapsTheCount() {
+        clock.set(STARTS.minus(Duration.ofMinutes(30)));
+        checkIn("alice", bobId, null).expectStatus().isOk();
+        put("bob", "/events/" + eventId + "/rsvps/me", Map.of("guests", 1))
+                .expectStatus()
+                .isOk();
+        mine("bob").expectStatus().isOk().expectBody().jsonPath("$.arrived").isEqualTo(2);
+    }
+
+    @Test
+    void shrinkingThePartyLeavesALowerCountAlone() {
+        clock.set(STARTS.minus(Duration.ofMinutes(30)));
+        checkIn("alice", bobId, 1).expectStatus().isOk();
+        put("bob", "/events/" + eventId + "/rsvps/me", Map.of("guests", 1))
+                .expectStatus()
+                .isOk();
+        mine("bob").expectBody().jsonPath("$.arrived").isEqualTo(1);
+    }
+
+    @Test
+    void addingGuestsLeavesTheCountUnchanged() {
+        clock.set(STARTS.minus(Duration.ofMinutes(30)));
+        put("bob", "/events/" + eventId + "/rsvps/me", Map.of("guests", 1))
+                .expectStatus()
+                .isOk();
+        checkIn("alice", bobId, null).expectBody().jsonPath("$.arrived").isEqualTo(2);
+        put("bob", "/events/" + eventId + "/rsvps/me", Map.of("guests", 2))
+                .expectStatus()
+                .isOk();
+        mine("bob").expectBody().jsonPath("$.arrived").isEqualTo(2);
+    }
+
+    @Test
     void undoingACheckInRemovesIt() {
         clock.set(STARTS);
         checkIn("alice", bobId, 2).expectStatus().isOk();
