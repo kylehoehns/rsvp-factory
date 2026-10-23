@@ -50,7 +50,7 @@ class EventService implements Events {
             throw invalid("rsvp-cutoff-after-start", "The RSVP cutoff must be no later than the event's start.");
         }
         String description = request.description() == null ? "" : request.description();
-        long id = events.insert(
+        UUID id = events.insert(
                 groupId, request.title(), description, request.venue(), request.startsAt(), request.endsAt());
         publisher.publishEvent(new EventScheduled(id, groupId, capacity, guestLimit, cutoff));
         return events.find(id).orElseThrow();
@@ -58,7 +58,7 @@ class EventService implements Events {
 
     /** Cancels the event and publishes {@link EventCancelled}; cancelling a cancelled event changes nothing. */
     @Transactional
-    EventDetails cancel(Member member, long eventId) {
+    EventDetails cancel(Member member, UUID eventId) {
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         if (!groups.isOrganizer(event.groupId(), member.id())) {
             throw RuleBrokenException.notAnOrganizer("cancel its events");
@@ -70,7 +70,7 @@ class EventService implements Events {
     }
 
     @Override
-    public Optional<EventDetails> find(long eventId) {
+    public Optional<EventDetails> find(UUID eventId) {
         return events.find(eventId);
     }
 

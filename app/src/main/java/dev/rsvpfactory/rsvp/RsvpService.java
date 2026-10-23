@@ -44,7 +44,7 @@ class RsvpService {
      * waitlist into any seats that frees.
      */
     @Transactional
-    RsvpView rsvp(Member member, long eventId, int guests) {
+    RsvpView rsvp(Member member, UUID eventId, int guests) {
         SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         if (event.status() == EventStatus.CANCELLED) {
@@ -87,7 +87,7 @@ class RsvpService {
 
     /** Sets the event's capacity for an organizer of its group and promotes from the waitlist into new seats. */
     @Transactional
-    EventSeatsView changeCapacity(Member member, long eventId, int capacity) {
+    EventSeatsView changeCapacity(Member member, UUID eventId, int capacity) {
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         if (!groups.isOrganizer(event.groupId(), member.id())) {
             throw RuleBrokenException.notAnOrganizer("change its events' capacity");
@@ -115,7 +115,7 @@ class RsvpService {
 
     /** The member's own RSVP to the event. */
     @Transactional(readOnly = true)
-    RsvpView mine(Member member, long eventId) {
+    RsvpView mine(Member member, UUID eventId) {
         if (events.find(eventId).isEmpty()) {
             throw RuleBrokenException.notFound("event", eventId);
         }
@@ -134,7 +134,7 @@ class RsvpService {
 
     /** Withdraws the member's RSVP, confirmed or waitlisted, and promotes from the waitlist into the seats it frees. */
     @Transactional
-    void withdraw(Member member, long eventId) {
+    void withdraw(Member member, UUID eventId) {
         if (events.find(eventId).isEmpty()) {
             throw RuleBrokenException.notFound("event", eventId);
         }
@@ -156,7 +156,7 @@ class RsvpService {
         }
     }
 
-    private boolean withdrawIfPresent(UUID memberId, long eventId) {
+    private boolean withdrawIfPresent(UUID memberId, UUID eventId) {
         SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         Seating.State before = rsvps.state(eventId);
         Seating.Withdrawal withdrawal;

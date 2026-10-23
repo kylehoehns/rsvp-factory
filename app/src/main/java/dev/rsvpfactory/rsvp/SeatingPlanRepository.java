@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -18,7 +19,7 @@ class SeatingPlanRepository {
         this.jdbc = jdbc;
     }
 
-    void insert(long eventId, SeatingPlan plan) {
+    void insert(UUID eventId, SeatingPlan plan) {
         jdbc.sql("INSERT INTO seating_plan (event_id, capacity, guest_limit, rsvp_cutoff)"
                         + " VALUES (:eventId, :capacity, :guestLimit, :rsvpCutoff)")
                 .param("eventId", eventId)
@@ -28,7 +29,7 @@ class SeatingPlanRepository {
                 .update();
     }
 
-    void updateCapacity(long eventId, int capacity) {
+    void updateCapacity(UUID eventId, int capacity) {
         jdbc.sql("UPDATE seating_plan SET capacity = :capacity WHERE event_id = :eventId")
                 .param("capacity", capacity)
                 .param("eventId", eventId)
@@ -36,7 +37,7 @@ class SeatingPlanRepository {
     }
 
     /** Takes the event's seating plan with a row lock, so RSVPs to one event are seated one at a time. */
-    Optional<SeatingPlan> lock(long eventId) {
+    Optional<SeatingPlan> lock(UUID eventId) {
         return jdbc.sql(
                         "SELECT capacity, guest_limit, rsvp_cutoff FROM seating_plan WHERE event_id = :eventId FOR UPDATE")
                 .param("eventId", eventId)
@@ -47,11 +48,11 @@ class SeatingPlanRepository {
                 .optional();
     }
 
-    Optional<SeatingPlan> find(long eventId) {
+    Optional<SeatingPlan> find(UUID eventId) {
         return Optional.ofNullable(byEventIds(List.of(eventId)).get(eventId));
     }
 
-    Map<Long, SeatingPlan> byEventIds(Collection<Long> eventIds) {
+    Map<UUID, SeatingPlan> byEventIds(Collection<UUID> eventIds) {
         if (eventIds.isEmpty()) {
             return Map.of();
         }
@@ -60,7 +61,7 @@ class SeatingPlanRepository {
                         + " WHERE event_id IN (:ids)")
                 .param("ids", eventIds)
                 .query((rs, row) -> Map.entry(
-                        rs.getLong("event_id"),
+                        rs.getObject("event_id", UUID.class),
                         new SeatingPlan(
                                 rs.getInt("capacity"),
                                 rs.getInt("guest_limit"),

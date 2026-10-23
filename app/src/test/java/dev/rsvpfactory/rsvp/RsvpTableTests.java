@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,16 +49,18 @@ class RsvpTableTests {
 
     @Test
     void theDatabaseRefusesAnUnknownStatus() {
-        assertThatThrownBy(() -> jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status, created_at)"
-                                + " VALUES (1, '0197a000-0000-7000-8000-000000000001', 1, 'maybe', now())")
+        assertThatThrownBy(() -> jdbc.sql(
+                                "INSERT INTO rsvp (event_id, member_id, party_size, status, created_at)"
+                                        + " VALUES ('0197a002-0000-7000-8000-000000000001', '0197a000-0000-7000-8000-000000000001', 1, 'maybe', now())")
                         .update())
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
     void theDatabaseRefusesAnRsvpWithoutATime() {
-        assertThatThrownBy(() -> jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status)"
-                                + " VALUES (1, '0197a000-0000-7000-8000-000000000001', 1, 'confirmed')")
+        assertThatThrownBy(() -> jdbc.sql(
+                                "INSERT INTO rsvp (event_id, member_id, party_size, status)"
+                                        + " VALUES ('0197a002-0000-7000-8000-000000000001', '0197a000-0000-7000-8000-000000000001', 1, 'confirmed')")
                         .update())
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -69,7 +72,7 @@ class RsvpTableTests {
         api().rsvp("bob", eventId, 0).expectStatus().isOk();
 
         OffsetDateTime madeAt = jdbc.sql("SELECT created_at FROM rsvp WHERE event_id = :eventId")
-                .param("eventId", Long.parseLong(eventId))
+                .param("eventId", UUID.fromString(eventId))
                 .query(OffsetDateTime.class)
                 .single();
         assertThat(madeAt.toInstant()).isEqualTo(NOW);
@@ -86,7 +89,7 @@ class RsvpTableTests {
         jdbc.sql("UPDATE rsvp SET created_at = :at WHERE event_id = :eventId AND status = 'waitlisted'"
                         + " AND member_id = (SELECT id FROM member WHERE username = 'carol')")
                 .param("at", OffsetDateTime.ofInstant(NOW.plusSeconds(60), ZoneOffset.UTC))
-                .param("eventId", Long.parseLong(eventId))
+                .param("eventId", UUID.fromString(eventId))
                 .update();
 
         api().mine("dave", eventId).expectBody().jsonPath("$.waitlistPosition").isEqualTo(1);

@@ -3,6 +3,7 @@ package dev.rsvpfactory.rsvp;
 import dev.rsvpfactory.identity.CurrentMember;
 import dev.rsvpfactory.problems.RuleBrokenException;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,10 +45,10 @@ class RsvpController {
         rsvps.withdraw(currentMember.get(), parse(eventId));
     }
 
-    private static long parse(String eventId) {
+    private static UUID parse(String eventId) {
         try {
-            return Long.parseLong(eventId);
-        } catch (NumberFormatException e) {
+            return UUID.fromString(eventId);
+        } catch (IllegalArgumentException e) {
             throw RuleBrokenException.notFound("event", eventId);
         }
     }

@@ -29,7 +29,7 @@ class RsvpRepository {
     }
 
     /** The event's confirmed parties and its waitlist in arrival order. */
-    Seating.State state(long eventId) {
+    Seating.State state(UUID eventId) {
         List<Party> confirmed = new ArrayList<>();
         List<Party> waitlist = new ArrayList<>();
         jdbc.sql("SELECT member_id, party_size, status FROM rsvp WHERE event_id = :eventId ORDER BY created_at, id")
@@ -44,7 +44,7 @@ class RsvpRepository {
         return new Seating.State(confirmed, waitlist);
     }
 
-    void insert(long eventId, Party party, Placement placement, Instant createdAt) {
+    void insert(UUID eventId, Party party, Placement placement, Instant createdAt) {
         jdbc.sql("INSERT INTO rsvp (event_id, member_id, party_size, status, created_at)"
                         + " VALUES (:eventId, :memberId, :partySize, :status, :createdAt)")
                 .param("eventId", eventId)
@@ -55,7 +55,7 @@ class RsvpRepository {
                 .update();
     }
 
-    void changePartySize(long eventId, UUID memberId, int partySize) {
+    void changePartySize(UUID eventId, UUID memberId, int partySize) {
         jdbc.sql("UPDATE rsvp SET party_size = :partySize WHERE event_id = :eventId AND member_id = :memberId")
                 .param("partySize", partySize)
                 .param("eventId", eventId)
@@ -64,20 +64,20 @@ class RsvpRepository {
     }
 
     /** Ends every RSVP to the event, confirmed or waitlisted. */
-    void deleteAll(long eventId) {
+    void deleteAll(UUID eventId) {
         jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId")
                 .param("eventId", eventId)
                 .update();
     }
 
-    void delete(long eventId, UUID memberId) {
+    void delete(UUID eventId, UUID memberId) {
         jdbc.sql("DELETE FROM rsvp WHERE event_id = :eventId AND member_id = :memberId")
                 .param("eventId", eventId)
                 .param("memberId", memberId)
                 .update();
     }
 
-    void confirm(long eventId, UUID memberId) {
+    void confirm(UUID eventId, UUID memberId) {
         jdbc.sql("UPDATE rsvp SET status = :status WHERE event_id = :eventId AND member_id = :memberId")
                 .param("status", Placement.CONFIRMED.name().toLowerCase(Locale.ROOT))
                 .param("eventId", eventId)
@@ -85,7 +85,7 @@ class RsvpRepository {
                 .update();
     }
 
-    Map<Long, Seats> seats(Collection<Long> eventIds) {
+    Map<UUID, Seats> seats(Collection<UUID> eventIds) {
         if (eventIds.isEmpty()) {
             return Map.of();
         }
@@ -96,7 +96,8 @@ class RsvpRepository {
                         + " FROM rsvp WHERE event_id IN (:ids) GROUP BY event_id")
                 .param("ids", eventIds)
                 .query((rs, row) -> Map.entry(
-                        rs.getLong("event_id"), new Seats(rs.getInt("confirmed_seats"), rs.getInt("waitlist_length"))))
+                        rs.getObject("event_id", UUID.class),
+                        new Seats(rs.getInt("confirmed_seats"), rs.getInt("waitlist_length"))))
                 .list()
                 .stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
