@@ -6,7 +6,7 @@
 // Medium and high tier: once a maintainer has approved the head commit and everything is green, the factory merges
 // it in `shadow` and `on` alike. The decision was the maintainer's; the factory only clicks the button.
 
-import { api, ciResult, type FactoryPr, gh, reviewThreads } from "./github.ts";
+import { api, ciResult, type FactoryPr, gh, reviewThreads, settleThread, type Thread } from "./github.ts";
 import { config, run } from "./shared.ts";
 
 const MARK = (sha: string) => `<!-- factory-auto-merge sha=${sha} -->`;
@@ -40,6 +40,10 @@ async function approvedBy(token: string, pr: FactoryPr): Promise<string | undefi
   return latest?.state === "APPROVED" && latest.commit_id === pr.headRefOid ? latest.user.login : undefined;
 }
 
+/** A thread opened by a reviewer bot for a finding ("[one-way-door] **title**", "[blocker] **title**"). Left open, it
+ *  waits for the maintainer; once they approve the head commit with no decision-needed label, it is settled. */
+const isFinding = (t: Thread) => /^\[(one-way-door|blocker)\] \*\*/.test(t.body);
+
 /** Why this PR can't merge yet, or undefined if it can. `approver` is set for a medium or high PR a maintainer approved. */
 async function qualifies(token: string, pr: FactoryPr, approver: string | undefined): Promise<string | undefined> {
   const labels = new Set(pr.labels.map((l) => l.name));
@@ -55,7 +59,9 @@ async function qualifies(token: string, pr: FactoryPr, approver: string | undefi
   if (labels.has("risk:high") && opinion !== "success" && opinion !== "failure") {
     return "the second opinion hasn't read the head commit";
   }
-  if ((await reviewThreads(token, pr.number)).some((t) => !t.isResolved)) return "unresolved review threads";
+  const open = (await reviewThreads(token, pr.number)).filter((t) => !t.isResolved);
+  // An approval settles open finding threads; any other open thread (a person's comment) still waits.
+  if (open.some((t) => !(approver && isFinding(t)))) return "unresolved review threads";
   return undefined;
 }
 
@@ -69,6 +75,8 @@ export async function autoMerge(token: string, prs: FactoryPr[]) {
     const comments = gh(token, "pr", "view", String(pr.number), "--json", "comments", "--jq", "[.comments[].body] | join(\"\\n\")");
     if (comments.includes(MARK(pr.headRefOid))) continue;
     if (approver) {
+      const settled = (await reviewThreads(token, pr.number)).filter((t) => !t.isResolved && isFinding(t));
+      for (const t of settled) await settleThread(token, t.id, `Settled by ${approver}'s approval of ${pr.headRefOid.slice(0, 7)}.`);
       // Not an auto-merge: a revert of this PR doesn't trip the stop rule, because a person approved it.
       gh(token, "pr", "comment", String(pr.number), "--body", `Merged by the factory: ${approver} approved ${pr.headRefOid.slice(0, 7)} and all checks are green.\n\n${MARK(pr.headRefOid)}`);
       await api(token, `/pulls/${pr.number}/merge`, { method: "PUT", body: JSON.stringify({ merge_method: "squash", sha: pr.headRefOid }) });

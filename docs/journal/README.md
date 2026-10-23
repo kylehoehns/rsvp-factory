@@ -47,3 +47,4 @@ Updated as entries are added.
 | 14 | [The human is the queue](2026-10-22-14-the-human-is-the-queue.md) |
 | 15 | [The first features with no human, and a retro](2026-10-23-15-first-features-with-no-human-and-a-retro.md) |
 | 16 | [The factory asks, disagrees, and merges](2026-10-23-16-the-factory-asks-disagrees-and-merges.md) |
+| 17 | [Check-in, and the second opinion's first real catch](2026-10-23-17-check-in-and-the-second-opinions-first-real-catch.md) |
