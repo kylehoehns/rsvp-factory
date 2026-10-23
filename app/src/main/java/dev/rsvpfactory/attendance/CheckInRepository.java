@@ -41,6 +41,23 @@ class CheckInRepository {
                 .optional();
     }
 
+    void delete(UUID eventId, UUID memberId) {
+        jdbc.sql("DELETE FROM check_in WHERE event_id = :eventId AND member_id = :memberId")
+                .param("eventId", eventId)
+                .param("memberId", memberId)
+                .update();
+    }
+
+    /** Lowers the member's count to at most {@code max}; a lower count stays as it is. */
+    void capAt(UUID eventId, UUID memberId, int max) {
+        jdbc.sql("UPDATE check_in SET arrived = :max"
+                        + " WHERE event_id = :eventId AND member_id = :memberId AND arrived > :max")
+                .param("eventId", eventId)
+                .param("memberId", memberId)
+                .param("max", max)
+                .update();
+    }
+
     private static CheckInView view(java.sql.ResultSet rs, int row) throws java.sql.SQLException {
         return new CheckInView(
                 rs.getObject("member_id", UUID.class),

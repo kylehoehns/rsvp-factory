@@ -70,6 +70,7 @@ class RsvpService {
                             || before.waitlistPosition(member.id()) > 0;
             if (changed) {
                 rsvps.changePartySize(eventId, member.id(), party.size());
+                publisher.publishEvent(new RsvpChanged(eventId, member.id(), party.size()));
             } else {
                 rsvps.insert(eventId, party, outcome.placement(), Instant.now(clock));
                 publisher.publishEvent(
