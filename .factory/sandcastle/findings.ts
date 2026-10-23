@@ -27,13 +27,14 @@ const FOLLOW_UP_REPLY = "Tracked as a follow-up: it's filed as a `needs-triage` 
  * Reply to and resolve the review threads for these findings, matched by the bold title both reviewers put in
  * each inline comment. One-way doors stay open: they're the maintainer's call.
  */
-export async function settleFindings(token: string, pr: number, findings: Finding[], replies: Map<string, string> = new Map()) {
+export async function settleFindings(token: string, pr: number, findings: Finding[], replies: Map<string, string> = new Map(),
+  keepOpen = false) {
   const threads = (await reviewThreads(token, pr)).filter((t) => !t.isResolved);
   for (const finding of findings) {
     const thread = threads.find((t) => t.body.includes(`**${finding.title}**`));
     if (!thread || finding.kind === "one-way-door") continue;
     const reply = replies.get(finding.title) ?? (finding.kind === "follow-up" ? FOLLOW_UP_REPLY : undefined);
-    await settleThread(token, thread.id, reply).catch((e) => console.log(`PR #${pr}: could not settle "${finding.title}": ${e}`));
+    await settleThread(token, thread.id, reply, keepOpen).catch((e) => console.log(`PR #${pr}: could not settle "${finding.title}": ${e}`));
   }
 }
 const STORE = /\n*<!-- factory-follow-ups\n([\s\S]*?)\n-->\n?/;
@@ -125,6 +126,20 @@ export async function triageSecondOpinion(token: string, pr: number, branch: str
   const fresh = await freshToken();
   const commits = run("git", ["rev-list", `origin/${branch}..${branch}`]);
   gh(fresh, "pr", "comment", String(pr), "--body", `Review round ${round} of ${config.maxReviewRounds}: ${outcome.summary}${note}\n\n${marker}`);
+  const resolutions = JSON.parse(read("resolutions.json") ?? "[]") as Resolution[];
+  const declined = (b: Finding) => resolutions.some((r) => r.title === b.title && r.status === "declined");
+  if (outcome.outcome === "success" && !commits && blockers.every(declined)) {
+    // Two reviewers disagree and nothing changed: that's a decision for the maintainer, not a failure. Answer each
+    // thread with the fixer's reason and leave it open for the maintainer to settle.
+    const reasons = new Map(resolutions.map((r) => [r.title, `**Not changed:** ${r.note}`]));
+    await settleFindings(fresh, pr, blockers, reasons, true);
+    gh(fresh, "pr", "edit", String(pr), "--add-label", "decision-needed");
+    gh(fresh, "pr", "comment", String(pr), "--body", "**Decision for the maintainer:** the factory declined every blocker " +
+      "from the second opinion and changed nothing; its reasons are on each thread. Merge if you agree with the factory, " +
+      "or say what to change.");
+    console.log(`PR #${pr}: the factory declined every second-opinion blocker; waiting for the maintainer`);
+    return;
+  }
   if (outcome.outcome !== "success" || !commits) {
     block(pr, outcome.outcome !== "success" ? outcome.summary : "the review-fix session made no commits.");
     return;
@@ -132,7 +147,6 @@ export async function triageSecondOpinion(token: string, pr: number, branch: str
   push(fresh, branch); // fast-forward only
   // Answer each blocker's thread with what was done about it, then resolve it.
   const head = run("git", ["rev-parse", "--short", branch]);
-  const resolutions = JSON.parse(read("resolutions.json") ?? "[]") as Resolution[];
   const replies = new Map(resolutions.map((r) => [r.title, r.status === "fixed" ? `**Fixed in \`${head}\`:** ${r.note}` : `**Not changed:** ${r.note}`]));
   await settleFindings(fresh, pr, blockers.filter((b) => replies.has(b.title)), replies);
   // Ask for a fresh second opinion on the fixed code.

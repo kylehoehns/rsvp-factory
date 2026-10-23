@@ -46,7 +46,8 @@ jobs:
 
             Read the diff with `gh pr diff ${{ github.event.pull_request.number }}` and the description with
             `gh pr view ${{ github.event.pull_request.number }}`. The description says which ticket it closes; read that
-            ticket with `gh issue view <number>`, and read CODING_STANDARDS.md. Then check:
+            ticket with its comments, `gh issue view <number> --comments`, and read CODING_STANDARDS.md. A comment headed
+            "Agent Brief" is part of the ticket: where it differs from the body, the brief is what was asked for. Then check:
             - The ticket: everything it asks for is there and works, and nothing it didn't ask for was added.
             - The coding standards: a clear break of a rule in CODING_STANDARDS.md. Style and taste are not breaks.
             And look for what could go wrong in production:
