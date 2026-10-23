@@ -345,7 +345,8 @@ class SeatingTests {
                         RuleBrokenException.class,
                         e -> assertThat(e)
                                 .returns("rsvp-not-found", RuleBrokenException::rule)
-                                .returns(HttpStatus.NOT_FOUND, RuleBrokenException::status));
+                                .returns(HttpStatus.NOT_FOUND, RuleBrokenException::status)
+                                .returns("You have no RSVP to this event.", RuleBrokenException::getMessage));
     }
 
     @Property

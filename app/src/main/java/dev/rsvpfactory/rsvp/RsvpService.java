@@ -127,7 +127,7 @@ class RsvpService {
                 .filter(party -> party.memberId() == member.id())
                 .findFirst()
                 .map(party -> RsvpView.of(Placement.CONFIRMED, party.size(), 0))
-                .orElseThrow(() -> RuleBrokenException.rsvpNotFound());
+                .orElseThrow(RuleBrokenException::rsvpNotFound);
     }
 
     /** Withdraws the member's RSVP, confirmed or waitlisted, and promotes from the waitlist into the seats it frees. */
