@@ -39,18 +39,21 @@ class EventTableTests {
     @Test
     void theDatabaseRefusesAnUnknownStatus() {
         assertThatThrownBy(() -> insert("POSTPONED", "2030-03-01T18:00:00Z", "2030-03-01T20:00:00Z"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("event_status_known");
     }
 
     @Test
     void theDatabaseRefusesAnEventThatEndsBeforeItStarts() {
         assertThatThrownBy(() -> insert("SCHEDULED", "2030-03-01T20:00:00Z", "2030-03-01T18:00:00Z"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("event_ends_after_start");
     }
 
     @Test
     void theDatabaseRefusesAnEventThatEndsWhenItStarts() {
         assertThatThrownBy(() -> insert("SCHEDULED", "2030-03-01T18:00:00Z", "2030-03-01T18:00:00Z"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("event_ends_after_start");
     }
 }
