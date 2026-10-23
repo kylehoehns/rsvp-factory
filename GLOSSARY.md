@@ -81,3 +81,13 @@ _Avoid_: Cancel (reserved for cancelled events), un-RSVP, drop out
 **RSVP cutoff**:
 The moment, set by the organizer, after which new RSVPs and promotions stop for an event; it defaults to the event's start.
 _Avoid_: Deadline, close time
+
+### At the door
+
+**Check-in**:
+An organizer recording that a confirmed party arrived, and how many of the party came. It is open from one hour before the event starts until it ends, never for a cancelled event, and checking in again sets the count.
+_Avoid_: Sign-in (that means a member signing in), arrival, attendee
+
+**Attendance**:
+The organizer's view of an event's check-ins: every confirmed party, checked in or not, with how many came.
+_Avoid_: Attendee list, guest list, roster
