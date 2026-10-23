@@ -31,7 +31,8 @@ cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctr
   2nd opinion  it adds the claude-review label to every PR, which starts the independent second opinion
              (.github/workflows/claude-code-review.yml); its pass on the head commit can make a small PR low
   │
-  ci + risk-gate on the PR; the maintainer approves; merging closes the ticket
+  ci + risk-gate on the PR; low merges itself; medium/high merge once the maintainer approves the head
+  commit; merging closes the ticket
 ```
 
 When an agent isn't sure how to continue, what happens depends on the kind of decision:
