@@ -23,7 +23,16 @@ export async function appToken(): Promise<string> {
 }
 
 export function gh(token: string, ...args: string[]): string {
-  return run("gh", [...args, "--repo", REPO], { GH_TOKEN: token });
+  const safe = args.map((a, i) => (args[i - 1] === "--body" ? noMentions(a) : a));
+  return run("gh", [...safe, "--repo", REPO], { GH_TOKEN: token });
+}
+
+/** Backticks `@word` outside code, so an agent writing `@Test` doesn't notify a GitHub user named "test". */
+export function noMentions(body: string): string {
+  return body
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/)
+    .map((part, i) => (i % 2 ? part : part.replace(/(^|[^\w`])@([A-Za-z][\w-]*)/g, "$1`@$2`")))
+    .join("");
 }
 
 export async function api<T>(token: string, path: string, init: RequestInit = {}): Promise<T> {
@@ -64,7 +73,7 @@ export async function settleThread(token: string, threadId: string, reply: strin
   if (reply) {
     await graphql(token, `mutation($id: ID!, $body: String!) {
       addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $id, body: $body }) { comment { id } } }`,
-      { id: threadId, body: reply });
+      { id: threadId, body: noMentions(reply) });
   }
   if (!keepOpen) {
     await graphql(token, `mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { id } } }`, { id: threadId });
