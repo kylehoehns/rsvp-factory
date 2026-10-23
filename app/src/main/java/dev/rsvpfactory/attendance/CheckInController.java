@@ -35,6 +35,11 @@ class CheckInController {
                 request.map(CheckInRequest::arrived).orElse(null));
     }
 
+    @GetMapping("/events/{eventId}/attendance")
+    AttendanceView attendance(@PathVariable String eventId) {
+        return checkIns.attendance(currentMember.get(), parse("event", eventId));
+    }
+
     @DeleteMapping("/events/{eventId}/check-ins/{memberId}")
     ResponseEntity<Void> undo(@PathVariable String eventId, @PathVariable String memberId) {
         checkIns.undo(currentMember.get(), parse("event", eventId), parse("member", memberId));
