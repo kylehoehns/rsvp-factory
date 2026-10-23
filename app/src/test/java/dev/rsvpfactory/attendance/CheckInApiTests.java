@@ -243,6 +243,80 @@ class CheckInApiTests {
         mine("bob").expectBody().jsonPath("$.arrived").isEqualTo(2);
     }
 
+    @Test
+    void undoingACheckInRemovesIt() {
+        clock.set(STARTS);
+        checkIn("alice", bobId, 2).expectStatus().isOk();
+        undo("alice", bobId).expectStatus().isNoContent();
+        assertRefused(mine("bob"), 404, "check-in-not-found");
+        checkIn("alice", bobId, null).expectBody().jsonPath("$.arrived").isEqualTo(3);
+    }
+
+    @Test
+    void undoingWhenNotCheckedInIsNotFound() {
+        clock.set(STARTS);
+        assertRefused(undo("alice", bobId), 404, "check-in-not-found");
+        checkIn("alice", bobId, null).expectStatus().isOk();
+        undo("alice", bobId).expectStatus().isNoContent();
+        assertRefused(undo("alice", bobId), 404, "check-in-not-found");
+    }
+
+    @Test
+    void undoIsRefusedToANonOrganizer() {
+        clock.set(STARTS);
+        checkIn("alice", bobId, null).expectStatus().isOk();
+        assertRefused(undo("carol", bobId), 403, "not-an-organizer");
+        assertRefused(undo("bob", bobId), 403, "not-an-organizer");
+        mine("bob").expectStatus().isOk();
+    }
+
+    @Test
+    void undoIsRefusedOutsideTheWindow() {
+        clock.set(STARTS);
+        checkIn("alice", bobId, null).expectStatus().isOk();
+        clock.set(ENDS);
+        assertRefused(undo("alice", bobId), 422, "check-in-closed");
+        clock.set(STARTS.minus(Duration.ofHours(1)).minusSeconds(1));
+        assertRefused(undo("alice", bobId), 422, "check-in-closed");
+        clock.set(ENDS.minusSeconds(1));
+        mine("bob").expectStatus().isOk();
+    }
+
+    @Test
+    void undoIsRefusedForACancelledEvent() {
+        clock.set(STARTS);
+        checkIn("alice", bobId, null).expectStatus().isOk();
+        post("alice", "/events/" + eventId + "/cancellation", Map.of())
+                .expectStatus()
+                .isOk();
+        assertRefused(undo("alice", bobId), 422, "check-in-closed");
+    }
+
+    @Test
+    void undoWithUnknownOrMalformedIdsIsNotFound() {
+        clock.set(STARTS);
+        assertRefused(undo("alice", bobId, UNKNOWN), 404, "event-not-found");
+        assertRefused(undo("alice", bobId, "nope"), 404, "event-not-found");
+        assertRefused(delete("alice", "/events/" + eventId + "/check-ins/nope"), 404, "member-not-found");
+    }
+
+    @Test
+    void undoRequiresSigningIn() {
+        client().delete()
+                .uri("/events/" + eventId + "/check-ins/" + bobId)
+                .exchange()
+                .expectStatus()
+                .isUnauthorized();
+    }
+
+    private ResponseSpec undo(String member, String memberId) {
+        return undo(member, memberId, eventId);
+    }
+
+    private ResponseSpec undo(String member, String memberId, String event) {
+        return delete(member, "/events/" + event + "/check-ins/" + memberId);
+    }
+
     private ResponseSpec delete(String member, String path) {
         return client().delete()
                 .uri(path)
