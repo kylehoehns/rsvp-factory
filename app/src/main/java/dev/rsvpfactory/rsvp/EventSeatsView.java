@@ -3,11 +3,12 @@ package dev.rsvpfactory.rsvp;
 import dev.rsvpfactory.events.EventDetails;
 import dev.rsvpfactory.events.EventStatus;
 import java.time.Instant;
+import java.util.UUID;
 
 /** An event with its seats: what anyone may see before deciding to RSVP. */
 record EventSeatsView(
         long id,
-        long groupId,
+        UUID groupId,
         String title,
         String description,
         String venue,

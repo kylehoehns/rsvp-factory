@@ -53,7 +53,7 @@ class CapacityApiTests {
 
     private String id(ResponseSpec response) {
         String[] id = new String[1];
-        response.expectBody().jsonPath("$.id").value(Object.class, value -> id[0] = String.valueOf(value));
+        response.expectBody().jsonPath("$.id").value((Object value) -> id[0] = String.valueOf(value));
         return Objects.requireNonNull(id[0]);
     }
 

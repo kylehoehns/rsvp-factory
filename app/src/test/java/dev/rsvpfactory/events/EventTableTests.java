@@ -20,8 +20,9 @@ class EventTableTests {
     JdbcClient jdbc;
 
     private int insert(String status, String startsAt, String endsAt) {
-        return jdbc.sql("INSERT INTO event (group_id, title, description, venue, starts_at, ends_at, status)"
-                        + " VALUES (1, 't', 'd', 'v', :startsAt::timestamptz, :endsAt::timestamptz, :status)")
+        return jdbc.sql(
+                        "INSERT INTO event (group_id, title, description, venue, starts_at, ends_at, status)"
+                                + " VALUES ('0197a001-0000-7000-8000-000000000001', 't', 'd', 'v', :startsAt::timestamptz, :endsAt::timestamptz, :status)")
                 .param("startsAt", startsAt)
                 .param("endsAt", endsAt)
                 .param("status", status)

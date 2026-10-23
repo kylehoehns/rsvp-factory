@@ -169,7 +169,7 @@ final class Api {
 
     private static String id(ResponseSpec response) {
         String[] holder = new String[1];
-        response.expectBody().jsonPath("$.id").value(Object.class, id -> holder[0] = String.valueOf(id));
+        response.expectBody().jsonPath("$.id").value((Object id) -> holder[0] = String.valueOf(id));
         return Objects.requireNonNull(holder[0], "response had no id");
     }
 

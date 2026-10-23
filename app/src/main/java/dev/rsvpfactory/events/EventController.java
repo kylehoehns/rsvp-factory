@@ -4,6 +4,7 @@ import dev.rsvpfactory.identity.CurrentMember;
 import dev.rsvpfactory.problems.RuleBrokenException;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,10 +25,10 @@ class EventController {
     @PostMapping("/groups/{groupId}/events")
     ResponseEntity<EventDetails> schedule(
             @PathVariable String groupId, @Valid @RequestBody ScheduleEventRequest request) {
-        long id;
+        UUID id;
         try {
-            id = Long.parseLong(groupId);
-        } catch (NumberFormatException e) {
+            id = UUID.fromString(groupId);
+        } catch (IllegalArgumentException e) {
             throw RuleBrokenException.notFound("group", groupId);
         }
         EventDetails event = events.schedule(currentMember.get(), id, request);

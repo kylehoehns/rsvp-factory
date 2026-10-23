@@ -147,7 +147,7 @@ class RsvpService {
      * Withdraws the member's RSVPs to the group's events that haven't started, with promotion as for any withdrawal.
      */
     @Transactional
-    void withdrawUpcoming(long groupId, UUID memberId) {
+    void withdrawUpcoming(UUID groupId, UUID memberId) {
         Instant now = Instant.now(clock);
         for (EventDetails event : events.inGroup(groupId)) {
             if (event.status() == EventStatus.SCHEDULED && event.startsAt().isAfter(now)) {

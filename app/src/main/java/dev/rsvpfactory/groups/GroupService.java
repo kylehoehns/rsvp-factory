@@ -27,14 +27,14 @@ class GroupService implements GroupAccess {
     /** Starts a group; its creator is a member and its first organizer. */
     @Transactional
     GroupView start(Member creator, String name, String description) {
-        long id = groups.insert(name, description);
+        UUID id = groups.insert(name, description);
         groups.addMember(id, creator.id(), true);
         return view(id);
     }
 
     /** Joins the group; joining a group the member already belongs to changes nothing. */
     @Transactional
-    GroupView join(Member member, long id) {
+    GroupView join(Member member, UUID id) {
         requireGroup(id);
         groups.join(id, member.id());
         return view(id);
@@ -42,7 +42,7 @@ class GroupService implements GroupAccess {
 
     /** Leaves the group and says so; leaving a group the member doesn't belong to changes nothing. */
     @Transactional
-    void leave(Member member, long id) {
+    void leave(Member member, UUID id) {
         requireGroup(id);
         if (groups.leave(id, member.id())) {
             events.publishEvent(new MemberLeftGroup(id, member.id()));
@@ -51,7 +51,7 @@ class GroupService implements GroupAccess {
 
     /** Makes an existing member of the group an organizer; only an organizer may. */
     @Transactional
-    GroupView makeOrganizer(Member by, long id, String memberId) {
+    GroupView makeOrganizer(Member by, UUID id, String memberId) {
         requireGroup(id);
         if (!groups.isOrganizer(id, by.id())) {
             throw RuleBrokenException.notAnOrganizer("make another member an organizer");
@@ -76,29 +76,29 @@ class GroupService implements GroupAccess {
         }
     }
 
-    GroupView view(long id) {
+    GroupView view(UUID id) {
         GroupRepository.GroupRow group = requireGroup(id);
         List<Member> organizers =
                 List.copyOf(members.byIds(groups.organizerIds(id)).values());
         return new GroupView(group.id(), group.name(), group.description(), groups.memberCount(id), organizers);
     }
 
-    private GroupRepository.GroupRow requireGroup(long id) {
+    private GroupRepository.GroupRow requireGroup(UUID id) {
         return groups.find(id).orElseThrow(() -> RuleBrokenException.notFound("group", id));
     }
 
     @Override
-    public boolean exists(long groupId) {
+    public boolean exists(UUID groupId) {
         return groups.find(groupId).isPresent();
     }
 
     @Override
-    public boolean isMember(long groupId, UUID memberId) {
+    public boolean isMember(UUID groupId, UUID memberId) {
         return groups.isMember(groupId, memberId);
     }
 
     @Override
-    public boolean isOrganizer(long groupId, UUID memberId) {
+    public boolean isOrganizer(UUID groupId, UUID memberId) {
         return groups.organizerIds(groupId).contains(memberId);
     }
 }

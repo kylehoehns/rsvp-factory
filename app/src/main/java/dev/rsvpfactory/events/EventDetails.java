@@ -1,11 +1,12 @@
 package dev.rsvpfactory.events;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /** An event's what and when, as other modules see it. */
 public record EventDetails(
         long id,
-        long groupId,
+        UUID groupId,
         String title,
         String description,
         String venue,

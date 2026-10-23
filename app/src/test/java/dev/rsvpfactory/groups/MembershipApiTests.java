@@ -138,7 +138,7 @@ class MembershipApiTests {
 
         view(groupId).expectBody().jsonPath("$.memberCount").isEqualTo(1);
         assertThat(leftGroup.seen.stream())
-                .containsExactly(new MemberLeftGroup(Long.parseLong(groupId), UUID.fromString(BOB)));
+                .containsExactly(new MemberLeftGroup(UUID.fromString(groupId), UUID.fromString(BOB)));
     }
 
     @Test
@@ -148,7 +148,7 @@ class MembershipApiTests {
         leave("carol", groupId).expectStatus().isNoContent();
 
         view(groupId).expectBody().jsonPath("$.memberCount").isEqualTo(1);
-        assertThat(leftGroup.seen.stream().filter(e -> e.groupId() == Long.parseLong(groupId)))
+        assertThat(leftGroup.seen.stream().filter(e -> e.groupId().equals(UUID.fromString(groupId))))
                 .isEmpty();
     }
 

@@ -4,6 +4,7 @@ import dev.rsvpfactory.TestcontainersConfiguration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,7 +39,7 @@ class SchedulingEventsApiTests {
                 .exchange()
                 .expectBody()
                 .jsonPath("$.id")
-                .value(Object.class, value -> id[0] = String.valueOf(value));
+                .value((Object value) -> id[0] = String.valueOf(value));
         return Objects.requireNonNull(id[0]);
     }
 
@@ -76,7 +77,7 @@ class SchedulingEventsApiTests {
                 .isCreated()
                 .expectBody()
                 .jsonPath("$.id")
-                .value(Object.class, value -> id[0] = String.valueOf(value));
+                .value((Object value) -> id[0] = String.valueOf(value));
         return Objects.requireNonNull(id[0]);
     }
 
@@ -240,6 +241,9 @@ class SchedulingEventsApiTests {
         assertRefused(schedule("alice", "not-an-id", event()), 404, "group-not-found");
         assertRefused(client().get().uri("/groups/999999/events").exchange(), 404, "group-not-found");
         assertRefused(client().get().uri("/groups/not-an-id/events").exchange(), 404, "group-not-found");
+        String random = UUID.randomUUID().toString();
+        assertRefused(schedule("alice", random, event()), 404, "group-not-found");
+        assertRefused(client().get().uri("/groups/" + random + "/events").exchange(), 404, "group-not-found");
     }
 
     @Test

@@ -5,9 +5,9 @@ import java.util.UUID;
 /** What other modules may ask about a group. */
 public interface GroupAccess {
 
-    boolean exists(long groupId);
+    boolean exists(UUID groupId);
 
-    boolean isMember(long groupId, UUID memberId);
+    boolean isMember(UUID groupId, UUID memberId);
 
-    boolean isOrganizer(long groupId, UUID memberId);
+    boolean isOrganizer(UUID groupId, UUID memberId);
 }
