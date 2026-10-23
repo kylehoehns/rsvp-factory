@@ -69,7 +69,7 @@ class RsvpService {
             if (changed) {
                 rsvps.changePartySize(eventId, member.id(), party.size());
             } else {
-                rsvps.insert(eventId, party, outcome.placement());
+                rsvps.insert(eventId, party, outcome.placement(), Instant.now(clock));
                 publisher.publishEvent(
                         outcome.placement() == Placement.CONFIRMED
                                 ? new RsvpConfirmed(eventId, member.id(), party.size())
