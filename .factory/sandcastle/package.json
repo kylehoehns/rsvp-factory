@@ -7,7 +7,7 @@
     "factory": "tsx factory.ts",
     "build-image": "docker build -t rsvp-factory-sandbox:25 --build-arg AGENT_UID=$(id -u) --build-arg AGENT_GID=$(id -g) .",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test findings.test.ts"
+    "test": "tsx --test findings.test.ts github.test.ts"
   },
   "dependencies": {
     "@ai-hero/sandcastle": "0.12.0",
