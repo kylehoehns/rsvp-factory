@@ -45,3 +45,4 @@ Updated as entries are added.
 | 12 | [Cross-checking against the consensus, and triaging findings](2026-10-22-12-cross-checking-and-triaging-findings.md) |
 | 13 | [Three tickets in flight](2026-10-22-13-three-in-flight.md) |
 | 14 | [The human is the queue](2026-10-22-14-the-human-is-the-queue.md) |
+| 15 | [The first features with no human, and a retro](2026-10-23-15-first-features-with-no-human-and-a-retro.md) |
