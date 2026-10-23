@@ -31,10 +31,7 @@ class EventService implements Events {
             throw RuleBrokenException.notFound("group", groupId);
         }
         if (!groups.isOrganizer(groupId, organizer.id())) {
-            throw new RuleBrokenException(
-                    "not-an-organizer",
-                    HttpStatus.FORBIDDEN,
-                    "Only an organizer of the group can schedule its events.");
+            throw RuleBrokenException.notAnOrganizer("schedule its events");
         }
         int capacity = request.capacity() == null ? 0 : request.capacity();
         int guestLimit = request.guestLimit() == null ? 0 : request.guestLimit();
@@ -63,8 +60,7 @@ class EventService implements Events {
     EventDetails cancel(Member member, long eventId) {
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         if (!groups.isOrganizer(event.groupId(), member.id())) {
-            throw new RuleBrokenException(
-                    "not-an-organizer", HttpStatus.FORBIDDEN, "Only an organizer of the group can cancel its events.");
+            throw RuleBrokenException.notAnOrganizer("cancel its events");
         }
         if (events.cancel(eventId)) {
             publisher.publishEvent(new EventCancelled(eventId, event.groupId()));

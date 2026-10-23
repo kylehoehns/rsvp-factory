@@ -3,6 +3,7 @@ package dev.rsvpfactory.rsvp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.rsvpfactory.problems.RuleBrokenException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -341,10 +342,11 @@ class SeatingTests {
     void withdrawingWithoutAnRsvpIsRefused() {
         assertThatThrownBy(() -> Seating.withdraw(plan(2, 1), Seating.State.EMPTY, 1, NOW))
                 .isInstanceOfSatisfying(
-                        SeatingRefusal.class,
+                        RuleBrokenException.class,
                         e -> assertThat(e)
-                                .returns("rsvp-not-found", SeatingRefusal::rule)
-                                .returns(HttpStatus.NOT_FOUND, SeatingRefusal::status));
+                                .returns("rsvp-not-found", RuleBrokenException::rule)
+                                .returns(HttpStatus.NOT_FOUND, RuleBrokenException::status)
+                                .returns("You have no RSVP to this event.", RuleBrokenException::getMessage));
     }
 
     @Property

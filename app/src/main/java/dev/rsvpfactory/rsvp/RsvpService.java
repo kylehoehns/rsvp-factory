@@ -88,10 +88,7 @@ class RsvpService {
     EventSeatsView changeCapacity(Member member, long eventId, int capacity) {
         EventDetails event = events.find(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         if (!groups.isOrganizer(event.groupId(), member.id())) {
-            throw new RuleBrokenException(
-                    "not-an-organizer",
-                    HttpStatus.FORBIDDEN,
-                    "Only an organizer of the group can change its events' capacity.");
+            throw RuleBrokenException.notAnOrganizer("change its events' capacity");
         }
         SeatingPlan plan = plans.lock(eventId).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         Seating.State before = rsvps.state(eventId);
@@ -130,7 +127,7 @@ class RsvpService {
                 .filter(party -> party.memberId() == member.id())
                 .findFirst()
                 .map(party -> RsvpView.of(Placement.CONFIRMED, party.size(), 0))
-                .orElseThrow(() -> RuleBrokenException.notFound("rsvp", eventId));
+                .orElseThrow(RuleBrokenException::rsvpNotFound);
     }
 
     /** Withdraws the member's RSVP, confirmed or waitlisted, and promotes from the waitlist into the seats it frees. */
@@ -140,7 +137,7 @@ class RsvpService {
             throw RuleBrokenException.notFound("event", eventId);
         }
         if (!withdrawIfPresent(member.id(), eventId)) {
-            throw RuleBrokenException.notFound("rsvp", eventId);
+            throw RuleBrokenException.rsvpNotFound();
         }
     }
 
@@ -163,7 +160,7 @@ class RsvpService {
         Seating.Withdrawal withdrawal;
         try {
             withdrawal = Seating.withdraw(plan, before, memberId, Instant.now(clock));
-        } catch (SeatingRefusal refusal) {
+        } catch (RuleBrokenException noRsvp) {
             return false;
         }
         Party withdrawn = before.confirmed().stream()
