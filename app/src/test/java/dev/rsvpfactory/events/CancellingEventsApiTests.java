@@ -6,6 +6,7 @@ import dev.rsvpfactory.TestcontainersConfiguration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,7 @@ class CancellingEventsApiTests {
 
     private String id(ResponseSpec response) {
         String[] id = new String[1];
-        response.expectBody().jsonPath("$.id").value(Object.class, value -> id[0] = String.valueOf(value));
+        response.expectBody().jsonPath("$.id").value((Object value) -> id[0] = String.valueOf(value));
         return Objects.requireNonNull(id[0]);
     }
 
@@ -189,7 +190,7 @@ class CancellingEventsApiTests {
 
         cancel("alice", eventId).expectStatus().is2xxSuccessful();
 
-        assertThat(published.cancelled).contains(new EventCancelled(Long.parseLong(eventId), Long.parseLong(groupId)));
+        assertThat(published.cancelled).contains(new EventCancelled(Long.parseLong(eventId), UUID.fromString(groupId)));
     }
 
     @Test

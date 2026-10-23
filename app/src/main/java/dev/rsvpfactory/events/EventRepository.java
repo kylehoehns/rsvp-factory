@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +18,7 @@ class EventRepository {
         this.jdbc = jdbc;
     }
 
-    long insert(long groupId, String title, String description, String venue, Instant startsAt, Instant endsAt) {
+    long insert(UUID groupId, String title, String description, String venue, Instant startsAt, Instant endsAt) {
         return jdbc.sql("INSERT INTO event (group_id, title, description, venue, starts_at, ends_at, status)"
                         + " VALUES (:groupId, :title, :description, :venue, :startsAt, :endsAt, :status)"
                         + " RETURNING id")
@@ -48,7 +49,7 @@ class EventRepository {
                 .optional();
     }
 
-    List<EventDetails> inGroup(long groupId) {
+    List<EventDetails> inGroup(UUID groupId) {
         return jdbc.sql(SELECT + " WHERE group_id = :groupId ORDER BY starts_at, id")
                 .param("groupId", groupId)
                 .query(EventRepository::map)
@@ -61,7 +62,7 @@ class EventRepository {
     private static EventDetails map(ResultSet rs, int row) throws SQLException {
         return new EventDetails(
                 rs.getLong("id"),
-                rs.getLong("group_id"),
+                rs.getObject("group_id", UUID.class),
                 rs.getString("title"),
                 rs.getString("description"),
                 rs.getString("venue"),

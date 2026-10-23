@@ -6,6 +6,7 @@ import dev.rsvpfactory.problems.RuleBrokenException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ class EventService implements Events {
 
     /** Schedules an event for the group and publishes {@link EventScheduled} with the seating plan. */
     @Transactional
-    EventDetails schedule(Member organizer, long groupId, ScheduleEventRequest request) {
+    EventDetails schedule(Member organizer, UUID groupId, ScheduleEventRequest request) {
         if (!groups.exists(groupId)) {
             throw RuleBrokenException.notFound("group", groupId);
         }
@@ -74,7 +75,7 @@ class EventService implements Events {
     }
 
     @Override
-    public List<EventDetails> inGroup(long groupId) {
+    public List<EventDetails> inGroup(UUID groupId) {
         return events.inGroup(groupId);
     }
 

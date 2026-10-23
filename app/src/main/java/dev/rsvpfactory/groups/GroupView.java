@@ -2,5 +2,6 @@ package dev.rsvpfactory.groups;
 
 import dev.rsvpfactory.identity.Member;
 import java.util.List;
+import java.util.UUID;
 
-record GroupView(long id, String name, String description, int memberCount, List<Member> organizers) {}
+record GroupView(UUID id, String name, String description, int memberCount, List<Member> organizers) {}

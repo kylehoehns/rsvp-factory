@@ -7,6 +7,7 @@ import dev.rsvpfactory.problems.RuleBrokenException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,7 +41,7 @@ class EventSeatsController {
 
     @GetMapping("/groups/{groupId}/events")
     List<EventSeatsView> inGroup(@PathVariable String groupId) {
-        long id = parse(groupId, "group");
+        UUID id = parseGroup(groupId);
         if (!groups.exists(id)) {
             throw RuleBrokenException.notFound("group", groupId);
         }
@@ -54,6 +55,14 @@ class EventSeatsController {
                                 event, plan, seats.getOrDefault(event.id(), RsvpRepository.Seats.NONE)))
                         .stream())
                 .toList();
+    }
+
+    private static UUID parseGroup(String id) {
+        try {
+            return UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            throw RuleBrokenException.notFound("group", id);
+        }
     }
 
     private static long parse(String id, String what) {
