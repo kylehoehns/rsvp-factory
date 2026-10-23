@@ -49,9 +49,11 @@ async function qualifies(token: string, pr: FactoryPr, approver: string | undefi
   if (!ci || ci.failed) return "ci not green";
   const { statuses } = await api<{ statuses: { context: string; state: string }[] }>(token, `/commits/${pr.headRefOid}/status`);
   if (statuses.find((s) => s.context === "risk-gate")?.state !== "success") return "risk-gate not green";
-  // High tier also needs the independent second opinion to have passed this commit (ADR 0003).
-  if (labels.has("risk:high") && statuses.find((s) => s.context === "second-opinion")?.state !== "success") {
-    return "second opinion hasn't passed the head commit";
+  // High tier also needs the independent second opinion to have read this commit (ADR 0003). A pass or a fail both
+  // count: a fail leaves blockers (fix rounds) or a decision-needed label, and both wait for the maintainer anyway.
+  const opinion = statuses.find((s) => s.context === "second-opinion")?.state;
+  if (labels.has("risk:high") && opinion !== "success" && opinion !== "failure") {
+    return "the second opinion hasn't read the head commit";
   }
   if ((await reviewThreads(token, pr.number)).some((t) => !t.isResolved)) return "unresolved review threads";
   return undefined;
