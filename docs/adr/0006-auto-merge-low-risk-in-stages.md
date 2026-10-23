@@ -8,6 +8,8 @@ The factory can merge its own PRs when they are low risk, but only in stages set
 
 The published rollouts follow the same shape: Vercel decided in advance to stop if reverts exceeded three times its 1.7% baseline (671 low-risk PRs skipped review with no reverts); Rewind ran a week of shadow mode and saw about 99% agreement before enabling. Every published low tier excludes schema and interface changes, so schema changes never auto-merge here either. Small feature PRs can, once the independent second opinion passes them (ADR 0003).
 
+**Medium and high tier:** once a maintainer has approved the PR's head commit, and the same checks hold (plus, for high, the second opinion has passed that commit), the factory merges it in `shadow` and `on` alike; only `off` stops it. The decision is the maintainer's, so a revert of such a PR doesn't trip the stop rule. An approval of an earlier commit doesn't count: a push after the approval needs a new one.
+
 ## Consequences
 
 - With one maintainer, a revert-based stop rule is coarse; a single revert pauses everything, which is the intent.
