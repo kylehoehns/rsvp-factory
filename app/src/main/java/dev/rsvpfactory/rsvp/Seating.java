@@ -1,5 +1,6 @@
 package dev.rsvpfactory.rsvp;
 
+import dev.rsvpfactory.problems.RuleBrokenException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -125,11 +126,11 @@ final class Seating {
      * A member taking back their RSVP, confirmed or waitlisted. Always allowed, even after the cutoff. Freed seats go
      * to the earliest waitlisted parties that fit, repeatedly, until none fits; before the cutoff only.
      *
-     * @throws SeatingRefusal when the member has no RSVP
+     * @throws RuleBrokenException when the member has no RSVP
      */
     static Withdrawal withdraw(SeatingPlan plan, State state, long memberId, Instant now) {
         if (state.confirmedParty(memberId) == null && state.waitlistedParty(memberId) == null) {
-            throw new SeatingRefusal("rsvp-not-found", HttpStatus.NOT_FOUND, "There is no RSVP to withdraw.");
+            throw RuleBrokenException.rsvpNotFound();
         }
         List<Party> confirmed = new ArrayList<>(state.confirmed());
         confirmed.removeIf(party -> party.memberId() == memberId);

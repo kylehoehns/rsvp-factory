@@ -23,6 +23,20 @@ public class RuleBrokenException extends RuntimeException {
                 what + "-not-found", HttpStatus.NOT_FOUND, "There is no " + what + " " + id + ".");
     }
 
+    /**
+     * The refusal for an action only an organizer may take; {@code action} says what was refused, e.g. "cancel its
+     * events".
+     */
+    public static RuleBrokenException notAnOrganizer(String action) {
+        return new RuleBrokenException(
+                "not-an-organizer", HttpStatus.FORBIDDEN, "Only an organizer of the group can " + action + ".");
+    }
+
+    /** The refusal for a member who has no RSVP to the event. */
+    public static RuleBrokenException rsvpNotFound() {
+        return new RuleBrokenException("rsvp-not-found", HttpStatus.NOT_FOUND, "You have no RSVP to this event.");
+    }
+
     public String rule() {
         return rule;
     }

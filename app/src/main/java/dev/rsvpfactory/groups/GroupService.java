@@ -52,10 +52,7 @@ class GroupService implements GroupAccess {
     GroupView makeOrganizer(Member by, long id, long memberId) {
         requireGroup(id);
         if (!groups.isOrganizer(id, by.id())) {
-            throw new RuleBrokenException(
-                    "not-an-organizer",
-                    HttpStatus.FORBIDDEN,
-                    "Only an organizer can make another member an organizer.");
+            throw RuleBrokenException.notAnOrganizer("make another member an organizer");
         }
         if (!groups.isMember(id, memberId)) {
             throw new RuleBrokenException(
