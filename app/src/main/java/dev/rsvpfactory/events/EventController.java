@@ -37,10 +37,10 @@ class EventController {
 
     @PostMapping("/events/{eventId}/cancellation")
     EventDetails cancel(@PathVariable String eventId) {
-        long id;
+        UUID id;
         try {
-            id = Long.parseLong(eventId);
-        } catch (NumberFormatException e) {
+            id = UUID.fromString(eventId);
+        } catch (IllegalArgumentException e) {
             throw RuleBrokenException.notFound("event", eventId);
         }
         return events.cancel(currentMember.get(), id);

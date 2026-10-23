@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -274,15 +275,15 @@ class RsvpApiTests {
     @Test
     void confirmedAndWaitlistedRsvpsArePublishedAsEvents() {
         String eventId = event(groupWith("alice", "bob", "carol"), 2, 1);
-        long event = Long.parseLong(eventId);
+        UUID event = UUID.fromString(eventId);
 
         rsvp("bob", eventId, 1).expectStatus().isOk();
         rsvp("carol", eventId, 0).expectStatus().isOk();
         rsvp("bob", eventId, 1).expectStatus().isOk();
 
         List<Object> forEvent = published.events.stream()
-                .filter(e -> (e instanceof RsvpConfirmed c && c.eventId() == event)
-                        || (e instanceof RsvpWaitlisted w && w.eventId() == event))
+                .filter(e -> (e instanceof RsvpConfirmed c && c.eventId().equals(event))
+                        || (e instanceof RsvpWaitlisted w && w.eventId().equals(event)))
                 .toList();
         assertThat(forEvent).hasSize(2);
         assertThat(forEvent.get(0))
@@ -365,15 +366,15 @@ class RsvpApiTests {
     @Test
     void withdrawalsAndPromotionsArePublishedAsEvents() {
         String eventId = event(groupWith("alice", "bob", "carol"), 2, 1);
-        long event = Long.parseLong(eventId);
+        UUID event = UUID.fromString(eventId);
         rsvp("bob", eventId, 1).expectStatus().isOk();
         rsvp("carol", eventId, 0).expectStatus().isOk();
 
         withdraw("bob", eventId).expectStatus().isNoContent();
 
         List<Object> forEvent = published.events.stream()
-                .filter(e -> (e instanceof RsvpWithdrawn w && w.eventId() == event)
-                        || (e instanceof RsvpPromoted p && p.eventId() == event))
+                .filter(e -> (e instanceof RsvpWithdrawn w && w.eventId().equals(event))
+                        || (e instanceof RsvpPromoted p && p.eventId().equals(event)))
                 .toList();
         assertThat(forEvent).hasSize(2);
         assertThat(forEvent.get(0))

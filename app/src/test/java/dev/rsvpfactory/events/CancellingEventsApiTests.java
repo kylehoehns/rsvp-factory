@@ -179,7 +179,7 @@ class CancellingEventsApiTests {
                 .isEqualTo("cancelled");
 
         assertThat(published.cancelled)
-                .filteredOn(e -> e.eventId() == Long.parseLong(eventId))
+                .filteredOn(e -> e.eventId().equals(UUID.fromString(eventId)))
                 .hasSize(1);
     }
 
@@ -190,7 +190,8 @@ class CancellingEventsApiTests {
 
         cancel("alice", eventId).expectStatus().is2xxSuccessful();
 
-        assertThat(published.cancelled).contains(new EventCancelled(Long.parseLong(eventId), UUID.fromString(groupId)));
+        assertThat(published.cancelled)
+                .contains(new EventCancelled(UUID.fromString(eventId), UUID.fromString(groupId)));
     }
 
     @Test

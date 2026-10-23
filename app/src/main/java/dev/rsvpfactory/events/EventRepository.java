@@ -18,7 +18,7 @@ class EventRepository {
         this.jdbc = jdbc;
     }
 
-    long insert(UUID groupId, String title, String description, String venue, Instant startsAt, Instant endsAt) {
+    UUID insert(UUID groupId, String title, String description, String venue, Instant startsAt, Instant endsAt) {
         return jdbc.sql("INSERT INTO event (group_id, title, description, venue, starts_at, ends_at, status)"
                         + " VALUES (:groupId, :title, :description, :venue, :startsAt, :endsAt, :status)"
                         + " RETURNING id")
@@ -29,12 +29,12 @@ class EventRepository {
                 .param("startsAt", java.sql.Timestamp.from(startsAt))
                 .param("endsAt", java.sql.Timestamp.from(endsAt))
                 .param("status", EventStatus.SCHEDULED.name())
-                .query(Long.class)
+                .query(UUID.class)
                 .single();
     }
 
     /** Marks the event cancelled; false when it already was or does not exist. */
-    boolean cancel(long id) {
+    boolean cancel(UUID id) {
         return jdbc.sql("UPDATE event SET status = :cancelled WHERE id = :id AND status <> :cancelled")
                         .param("cancelled", EventStatus.CANCELLED.name())
                         .param("id", id)
@@ -42,7 +42,7 @@ class EventRepository {
                 > 0;
     }
 
-    Optional<EventDetails> find(long id) {
+    Optional<EventDetails> find(UUID id) {
         return jdbc.sql(SELECT + " WHERE id = :id")
                 .param("id", id)
                 .query(EventRepository::map)
@@ -61,7 +61,7 @@ class EventRepository {
 
     private static EventDetails map(ResultSet rs, int row) throws SQLException {
         return new EventDetails(
-                rs.getLong("id"),
+                rs.getObject("id", UUID.class),
                 rs.getObject("group_id", UUID.class),
                 rs.getString("title"),
                 rs.getString("description"),

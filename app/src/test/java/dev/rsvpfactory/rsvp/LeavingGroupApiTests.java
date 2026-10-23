@@ -196,8 +196,8 @@ class LeavingGroupApiTests {
         mine("carol", second).expectBody().jsonPath("$.status").isEqualTo("confirmed");
         assertThat(published.events)
                 .contains(
-                        new RsvpWithdrawn(Long.parseLong(first), demoMember(2), 2),
-                        new RsvpPromoted(Long.parseLong(first), demoMember(4), 1));
+                        new RsvpWithdrawn(UUID.fromString(first), demoMember(2), 2),
+                        new RsvpPromoted(UUID.fromString(first), demoMember(4), 1));
     }
 
     @Test

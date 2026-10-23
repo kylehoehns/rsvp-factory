@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /** An event with its seats: what anyone may see before deciding to RSVP. */
 record EventSeatsView(
-        long id,
+        UUID id,
         UUID groupId,
         String title,
         String description,

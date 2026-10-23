@@ -3,6 +3,7 @@ package dev.rsvpfactory.rsvp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.rsvpfactory.TestcontainersConfiguration;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -135,7 +136,7 @@ class GuestChangeApiTests {
         String eventId = event(groupWith("alice", "bob", "carol"), 2, 1);
         rsvp("bob", eventId, 1).expectStatus().isOk();
         rsvp("carol", eventId, 0).expectStatus().isOk();
-        long event = Long.parseLong(eventId);
+        UUID event = UUID.fromString(eventId);
 
         rsvp("bob", eventId, 0).expectStatus().isOk();
 

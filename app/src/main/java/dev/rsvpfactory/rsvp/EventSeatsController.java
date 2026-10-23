@@ -33,7 +33,7 @@ class EventSeatsController {
 
     @GetMapping("/events/{eventId}")
     EventSeatsView view(@PathVariable String eventId) {
-        long id = parse(eventId, "event");
+        UUID id = parse(eventId, "event");
         EventDetails event = events.find(id).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         SeatingPlan plan = plans.find(id).orElseThrow(() -> RuleBrokenException.notFound("event", eventId));
         return EventSeatsView.of(event, plan, rsvps.seats(List.of(id)).getOrDefault(id, RsvpRepository.Seats.NONE));
@@ -46,9 +46,9 @@ class EventSeatsController {
             throw RuleBrokenException.notFound("group", groupId);
         }
         List<EventDetails> inGroup = events.inGroup(id);
-        List<Long> ids = inGroup.stream().map(EventDetails::id).toList();
-        Map<Long, SeatingPlan> byEvent = plans.byEventIds(ids);
-        Map<Long, RsvpRepository.Seats> seats = rsvps.seats(ids);
+        List<UUID> ids = inGroup.stream().map(EventDetails::id).toList();
+        Map<UUID, SeatingPlan> byEvent = plans.byEventIds(ids);
+        Map<UUID, RsvpRepository.Seats> seats = rsvps.seats(ids);
         return inGroup.stream()
                 .flatMap(event -> Optional.ofNullable(byEvent.get(event.id()))
                         .map(plan -> EventSeatsView.of(
@@ -65,10 +65,10 @@ class EventSeatsController {
         }
     }
 
-    private static long parse(String id, String what) {
+    private static UUID parse(String id, String what) {
         try {
-            return Long.parseLong(id);
-        } catch (NumberFormatException e) {
+            return UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
             throw RuleBrokenException.notFound(what, id);
         }
     }
