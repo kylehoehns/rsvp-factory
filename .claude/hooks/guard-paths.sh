@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse guard for file edits.
-# Factory runs (RSVP_FACTORY=1) may not touch the paths the risk policy treats as the factory's own
+# Factory runs (FACTORY_RUN=1) may not touch the paths the risk policy treats as the factory's own
 # controls. Interactive sessions get asked instead, because the maintainer edits these on purpose.
 set -euo pipefail
 
@@ -38,7 +38,7 @@ case "$rel" in
   *) exit 0 ;;
 esac
 
-if [[ "${RSVP_FACTORY:-}" == "1" ]]; then
+if [[ "${FACTORY_RUN:-}" == "1" ]]; then
   decide deny "$reason"
 else
   decide ask "$reason"

@@ -1,6 +1,6 @@
 # The factory runs locally in Sandcastle sandboxes; only the orchestrator talks to GitHub
 
-The factory runs on the maintainer's machine, not in GitHub Actions. Each ticket gets a Sandcastle Docker sandbox on its own branch and worktree, with a private Docker-in-Docker on a dedicated network so Testcontainers works without the agent reaching the host's Docker. Agents hold a Claude credential and nothing else: no GitHub token, no `gh`. The orchestrator (`.factory/sandcastle/factory.ts`) is the only part that talks to GitHub, as the factory's GitHub App, with the app key read from the macOS keychain. It treats what agents produce as data: it refuses any branch that touches `.github`, `.factory`, `.agents`, `.claude`, `.githooks` or `scripts` before pushing.
+The factory runs on the maintainer's machine, not in GitHub Actions. Each ticket gets a Sandcastle Docker sandbox on its own branch and worktree, with a private Docker-in-Docker on a dedicated network so Testcontainers works without the agent reaching the host's Docker. Agents hold a Claude credential and nothing else: no GitHub token, no `gh`. The orchestrator (`.factory/sandcastle/factory.ts`, now in [factory-kit](https://github.com/kylehoehns/factory-kit), ADR 0008) is the only part that talks to GitHub, as the factory's GitHub App, with the app key read from the macOS keychain. It treats what agents produce as data: it refuses any branch that touches `.github`, `.factory`, `.agents`, `.claude`, `.githooks` or `scripts` before pushing.
 
 ## Considered options
 

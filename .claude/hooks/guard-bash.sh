@@ -20,7 +20,7 @@ fi
 if grep -Eq -- '--no-verify|--force([[:space:]]|$)|push[[:space:]].*-f([[:space:]]|$)' <<<"$cmd"; then
   deny "Skipping hooks and force-pushing are off-limits. Fix the failing check instead."
 fi
-if [[ "${RSVP_FACTORY:-}" == "1" ]] && grep -Eq '(^|[;&|[:space:]])git[[:space:]]+(push|remote)' <<<"$cmd"; then
+if [[ "${FACTORY_RUN:-}" == "1" ]] && grep -Eq '(^|[;&|[:space:]])git[[:space:]]+(push|remote)' <<<"$cmd"; then
   deny "Factory runs never push. Commit locally; the publish job pushes after validating the bundle."
 fi
 exit 0
