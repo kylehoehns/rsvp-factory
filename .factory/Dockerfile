@@ -1,4 +1,5 @@
-# The factory's sandbox image: what an agent gets, and nothing else.
+# The factory's sandbox image for this repo (factory-kit builds it with `npm run build-images`): what an agent gets,
+# and nothing else.
 # Java 25 for the build, git/jq/python3 for the repo's hooks and checks, Claude Code pinned.
 # Deliberately no gh and no GitHub credentials: agents never talk to GitHub (ADR 0004).
 FROM eclipse-temurin:25.0.4.1_1-jdk-noble

@@ -1,6 +1,6 @@
 # Auto-merge low-risk factory PRs in stages, with a stop rule written first
 
-The factory can merge its own PRs when they are low risk, but only in stages set by `autoMerge` in `.factory/config.json`: `off`, then `shadow` (the factory comments "would auto-merge" and the maintainer still merges), then `on`. A PR qualifies only if it is in the low tier, `ci` and `risk-gate` are green on its head commit, it has no `decision-needed` or `agent:blocked` label, and every review thread is resolved. The merge is a squash pinned to the head commit that was checked.
+The factory can merge its own PRs when they are low risk, but only in stages set by `autoMerge` in `.factory/config.json` (now `.factory/config.yml`): `off`, then `shadow` (the factory comments "would auto-merge" and the maintainer still merges), then `on`. A PR qualifies only if it is in the low tier, `ci` and `risk-gate` are green on its head commit, it has no `decision-needed` or `agent:blocked` label, and every review thread is resolved. The merge is a squash pinned to the head commit that was checked.
 
 **Stop rule, decided before turning it on:** if any auto-merged PR is reverted, auto-merge pauses (qualifying PRs get a "paused" comment instead) until the maintainer looks into it and switches it back on. **Turning it on** waits for shadow-mode data in `docs/factory/metrics.md`: low-tier PRs merged as-is by the maintainer, with none changed or reverted, over at least a week.
 

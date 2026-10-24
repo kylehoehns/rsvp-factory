@@ -1,9 +1,9 @@
 # How the factory works
 
-The factory turns GitHub issues labelled `ready-for-agent` into reviewed pull requests, and keeps its own pull requests' CI green. It runs on the maintainer's machine: start it once with `npm run factory` and it checks GitHub every `pollSeconds` until stopped with Ctrl+C (`npm run factory -- --once` does a single pass). In Matt Pocock's terms it is the "night shift": the unattended half, between the human "day shift" that shapes tickets and the one that reviews and merges PRs.
+The factory turns GitHub issues labelled `ready-for-agent` into reviewed pull requests, and keeps its own pull requests' CI green. Its code lives in [factory-kit](https://github.com/kylehoehns/factory-kit), which can watch several repos; this repo is one of them. It runs on the maintainer's machine: start it once with `npm run factory` in factory-kit and it checks GitHub every `pollSeconds` until stopped with Ctrl+C (`npm run factory -- --once` does a single pass). How it treats this repo is set in [`.factory/config.yml`](../../.factory/config.yml). In Matt Pocock's terms it is the "night shift": the unattended half, between the human "day shift" that shapes tickets and the one that reviews and merges PRs.
 
 ```text
-cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctrl+C)
+cd factory-kit && npm run factory          (every pollSeconds, until Ctrl+C)
   │
   update     for each open factory PR that conflicts with main (another PR merged first): a session merges
              main in, resolves the conflict, renumbers its own migrations if they collide; at most
@@ -20,7 +20,7 @@ cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctr
   │
   for each ready ticket (lowest number first, all blockers closed, under wipLimit)
   │
-  dispatch   .factory/dispatch.py claims it (agent:in-progress) and writes .factory/runs/task.md
+  dispatch   the factory claims it (agent:in-progress) and writes .factory/runs/task.md
   sandbox    Sandcastle starts a Docker container on branch agent/issue-N (a git worktree), plus a
              private Docker-in-Docker on its own network for Testcontainers
   implement  Claude, in the container: tdd at the spec's seams, an acceptance scenario,
@@ -29,7 +29,7 @@ cd .factory/sandcastle && npm run factory          (every pollSeconds, until Ctr
   publish    factory.ts refuses changes to the factory's own controls, pushes the branch, opens the
              PR as the factory app, and posts the reviewer's findings as a review on it
   2nd opinion  it adds the claude-review label to every PR, which starts the independent second opinion
-             (.github/workflows/claude-code-review.yml); its pass on the head commit can make a small PR low
+             (.github/workflows/second-review.yml, which calls factory-kit's); its pass on the head commit can make a small PR low
   │
   ci + risk-gate on the PR; low merges itself; medium/high merge once the maintainer approves the head
   commit; merging closes the ticket
@@ -47,9 +47,10 @@ Most questions should never reach the factory: grilling and `/to-spec` exist to 
 
 ## One-time setup
 
-1. Docker running (Colima or Docker Desktop) and Node 22+.
-2. `cd .factory/sandcastle && npm ci && npm run build-image`
-3. `.factory/sandcastle/setup-keychain.sh` stores two credentials in the macOS keychain:
+1. Docker running (Colima or Docker Desktop) and Node 26.
+2. Clone [factory-kit](https://github.com/kylehoehns/factory-kit), then `npm ci`, and copy `factory.example.yml` to `factory.yml` with this repo in `repos`.
+3. `npm run build-images` builds this repo's sandbox from [`.factory/Dockerfile`](../../.factory/Dockerfile).
+4. `bin/setup-keychain.sh` stores two credentials in the macOS keychain:
    - a Claude subscription token from `claude setup-token` (agents in containers can't use your Mac's login);
    - the factory GitHub App's private key, so the shift can open PRs as the app.
 
@@ -58,21 +59,26 @@ Most questions should never reach the factory: grilling and `/to-spec` exist to 
 | Agent can | Agent can't |
 |---|---|
 | Read and write its worktree (bind-mounted) | See the rest of your disk |
-| Use a dedicated Gradle cache (`~/.cache/rsvp-factory/gradle`) | Touch your own `~/.gradle` |
+| Use a dedicated Gradle cache (`~/.cache/factory/rsvp-factory/gradle`) | Touch your own `~/.gradle` |
 | Start containers in its private Docker-in-Docker | Reach your Docker daemon or its other containers |
 | Call the Anthropic API and download dependencies | Use GitHub: no `gh`, no token, no push |
 
-The repo's hooks run inside the container with `RSVP_FACTORY=1`, so the factory's own controls, committed migrations and shipped acceptance scenarios can't be edited in-session; `factory.ts` re-checks the branch before pushing.
+The repo's hooks run inside the container with `FACTORY_RUN=1`, so the factory's own controls, committed migrations and shipped acceptance scenarios can't be edited in-session; the factory re-checks the branch against `protected` in `.factory/config.yml` before pushing.
 
-## Knobs (`.factory/config.json`)
+## Knobs
+
+In this repo's [`.factory/config.yml`](../../.factory/config.yml), read from `main`:
 
 | Setting | Meaning |
 |---|---|
-| `wipLimit` | Factory tickets in flight plus open factory PRs. At 3, the factory keeps building independent tickets (one at a time) while earlier PRs wait for the maintainer; a ticket whose blocker isn't merged still waits |
-| `implementModel`, `reviewModel` | Model per role |
-| `implementTimeoutMinutes`, `reviewTimeoutMinutes` | Hard stop per session |
+| `check` | What "done" means: `./gradlew check` |
 | `autoMerge` | `off`, `shadow` (comment only, the starting point) or `on` (merge qualifying low-risk PRs). See ADR 0006 for when to switch |
-| `githubAppId` | The factory app (public; the private key is in the keychain) |
+| `maintainers`, `factoryBot` | Whose approvals and PRs count |
+| `protected` | The factory's own controls, which agents can't change |
+| `sandbox` | The private Docker for Testcontainers, and the Gradle cache |
+| `risk` | The tiers (ADR 0003) |
+
+In factory-kit's `factory.yml`, on the maintainer's machine: the app, `wipLimit` (shared by every repo the factory watches; at 3 it keeps building independent tickets while earlier PRs wait), fix-round limits, and the model and timeout per session.
 
 Session logs go to `.factory/runs/logs/` and stay on the machine (gitignored). Every agent session also appends its outcome, duration, commits and token totals to `.factory/runs/metrics.jsonl`; `python3 scripts/factory_metrics.py` combines that with the factory PRs on GitHub into [`metrics.md`](metrics.md): outcomes, rounds, time to merge, reverts, and each risk tier against what the maintainer did.
 
