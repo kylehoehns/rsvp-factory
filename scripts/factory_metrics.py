@@ -40,9 +40,9 @@ def maintainer_action(pr: dict) -> str:
         return "open"
     if pr["state"] == "CLOSED":
         return "closed unmerged"
-    # Agent commits are authored by the factory's bot user (or, before 2026-10-22, by the maintainer with Claude
+    # Agent commits are authored by the factory's bot user (rsvp-factory-bot until factory-kit, then kh-factory-bot; or, before 2026-10-22, by the maintainer with Claude
     # as co-author); a commit with neither is a human change.
-    agents = {"rsvp-factory-bot[bot]", "claude"}
+    agents = {"kh-factory-bot[bot]", "rsvp-factory-bot[bot]", "claude"}
     logins = [{a.get("login") for a in c.get("authors", [])} for c in pr["commits"]]
     human = any(authors & MAINTAINERS and not authors & agents for authors in logins)
     return "merged after changes" if human else "merged as-is"
