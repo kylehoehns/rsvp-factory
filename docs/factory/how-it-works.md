@@ -82,4 +82,4 @@ In factory-kit's `factory.yml`, on the maintainer's machine: the app, `wipLimit`
 
 Session logs go to `.factory/runs/logs/` and stay on the machine (gitignored). Every agent session also appends its outcome, duration, commits and token totals to `.factory/runs/metrics.jsonl`; `python3 scripts/factory_metrics.py` combines that with the factory PRs on GitHub into [`metrics.md`](metrics.md): outcomes, rounds, time to merge, reverts, and each risk tier against what the maintainer did.
 
-Agents commit as `rsvp-factory-bot[bot]` (set in the sandbox's environment), so GitHub shows the factory, not the maintainer, as the author of agent code.
+Agents commit as the factory's app, `kh-factory-bot[bot]` (`rsvp-factory-bot[bot]` on PRs from before factory-kit; set in the sandbox's environment), so GitHub shows the factory, not the maintainer, as the author of agent code.
