@@ -19,6 +19,11 @@ export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" TESTCONTAINERS_DOC
 - A ticket's tests live in `app/src/test`, where CI mutation-tests the classes a PR changes; `acceptance/` gets one or two end-to-end journeys per ticket (copy `ApplicationScenarios`). Add new scenarios; leave existing ones as they are, because changing one raises the PR's risk tier (ADR 0002).
 - `./gradlew check` writes the module structure to `docs/modules/` (gitignored); read it there rather than inferring boundaries from imports.
 
+## Skills and hooks
+
+- Skills live in `.agents/skills/` (vendored, see `.agents/skills/VENDORED.md`); `.claude/skills` is a symlink to it. Edit them there, not through a plugin.
+- When a hook in `.claude/hooks/` blocks something, its message says why; follow it rather than working around it.
+
 ## Agent skills
 
 ### Issue tracker
