@@ -14,18 +14,24 @@ git clone --quiet https://github.com/mattpocock/skills "$tmp/skills"
 git -C "$tmp/skills" checkout --quiet "$sha"
 
 # The plugin manifest lists the promoted skills; in-progress and misc skills stay out.
+upstream=()
 for path in $(jq -r '.skills[]' "$tmp/skills/.claude-plugin/plugin.json"); do
   name=$(basename "$path")
+  upstream+=("$name")
   rm -rf "$root/.agents/skills/$name"
   cp -R "$tmp/skills/$path" "$root/.agents/skills/$name"
 done
 # Renamed on the way in. A vendored skill with the name of a Claude Code built-in replaces it, and the factory's
 # reviewer runs the built-in code-review (bugs) and security-review as well as this one (ticket and standards).
+# Only upstream's files are rewritten: VENDORED.md and this repo's own skills keep the old name where they say it.
 for pair in code-review:spec-review; do
   from=${pair%%:*} to=${pair##*:}
   rm -rf "$root/.agents/skills/$to"
   mv "$root/.agents/skills/$from" "$root/.agents/skills/$to"
-  for file in $(grep -rl -- "$from" "$root/.agents/skills"); do
+  for name in "${upstream[@]}"; do
+    [ "$name" = "$from" ] && name=$to
+    grep -rl -- "$from" "$root/.agents/skills/$name" || true
+  done | while read -r file; do
     sed -i.bak -E "s/(^|[^a-z-])$from([^a-z-]|\$)/\1$to\2/g" "$file" && rm "$file.bak"
   done
 done
