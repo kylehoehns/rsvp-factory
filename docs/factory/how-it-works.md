@@ -25,7 +25,8 @@ cd factory-kit && npm run factory          (every pollSeconds, until Ctrl+C)
              private Docker-in-Docker on its own network for Testcontainers
   implement  Claude, in the container: tdd at the spec's seams, an acceptance scenario,
              ./gradlew check green, commits, PR body (pr skill), outcome
-  review     a fresh Claude session in the same container: code-review skill, fixes, PR body
+  review     a fresh Claude session in the same container: code-review (bugs), security-review and
+             spec-review (ticket and standards), fixes, PR body
   publish    factory.ts refuses changes to the factory's own controls, pushes the branch, opens the
              PR as the factory app, and posts the reviewer's findings as a review on it
   2nd opinion  it adds the claude-review label to every PR, which starts the independent second opinion

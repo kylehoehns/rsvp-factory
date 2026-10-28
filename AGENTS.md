@@ -22,6 +22,7 @@ export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock" TESTCONTAINERS_DOC
 ## Skills and hooks
 
 - Skills live in `.agents/skills/` (vendored, see `.agents/skills/VENDORED.md`); `.claude/skills` is a symlink to it. Edit them there, not through a plugin.
+- To review a branch against its ticket and the coding standards, use the `spec-review` skill. `code-review` and `security-review` are Claude Code's built-in bug and security reviews.
 - When a hook in `.claude/hooks/` blocks something, its message says why; follow it rather than working around it.
 
 ## Agent skills
